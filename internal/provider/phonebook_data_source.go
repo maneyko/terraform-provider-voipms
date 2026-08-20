@@ -22,14 +22,15 @@ type phonebookGroupsDataSource struct{ client *client.Client }
 
 func phonebookEntryDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	id := schema.StringAttribute{MarkdownDescription: "Phonebook entry id.", Computed: true}
+	name := schema.StringAttribute{MarkdownDescription: "Contact name.", Computed: true}
 	if lookup {
-		id.Required = true
-		id.Computed = false
+		id.Optional = true
+		name.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":         id,
 		"speed_dial": dsString("Speed-dial code."),
-		"name":       dsString("Contact name."),
+		"name":       name,
 		"number":     dsString("Phone number or prefix."),
 		"callerid":   dsString("Caller ID name override."),
 		"note":       dsString("Note."),
@@ -40,13 +41,14 @@ func phonebookEntryDataSourceAttributes(lookup bool) map[string]schema.Attribute
 
 func phonebookGroupDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	id := schema.StringAttribute{MarkdownDescription: "Phonebook group id.", Computed: true}
+	name := schema.StringAttribute{MarkdownDescription: "Group name.", Computed: true}
 	if lookup {
-		id.Required = true
-		id.Computed = false
+		id.Optional = true
+		name.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":      id,
-		"name":    dsString("Group name."),
+		"name":    name,
 		"members": dsString("Comma-separated phonebook entry ids."),
 	}
 }
@@ -56,7 +58,7 @@ func (d *phonebookEntryDataSource) Metadata(_ context.Context, req datasource.Me
 }
 func (d *phonebookEntryDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a phonebook entry by id (`getPhonebook`).",
+		MarkdownDescription: "Reads a phonebook entry by id or contact `name` (`getPhonebook`).",
 		Attributes:          phonebookEntryDataSourceAttributes(true),
 	}
 }
@@ -69,7 +71,14 @@ func (d *phonebookEntryDataSource) Read(ctx context.Context, req datasource.Read
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetPhonebookEntry(ctx, data.ID.ValueString())
+	query := exactlyOneLookup(&resp.Diagnostics, "phonebook entry", []lookupField{
+		{Name: "id", Value: configuredString(data.ID)},
+		{Name: "name", Value: configuredString(data.Name)},
+	})
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	got, err := d.client.FindPhonebookEntry(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms phonebook entry", err.Error())
 		return
@@ -126,7 +135,7 @@ func (d *phonebookGroupDataSource) Metadata(_ context.Context, req datasource.Me
 }
 func (d *phonebookGroupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a phonebook group by id (`getPhonebookGroups`).",
+		MarkdownDescription: "Reads a phonebook group by id or `name` (`getPhonebookGroups`).",
 		Attributes:          phonebookGroupDataSourceAttributes(true),
 	}
 }
@@ -139,7 +148,14 @@ func (d *phonebookGroupDataSource) Read(ctx context.Context, req datasource.Read
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetPhonebookGroup(ctx, data.ID.ValueString())
+	query := exactlyOneLookup(&resp.Diagnostics, "phonebook group", []lookupField{
+		{Name: "id", Value: configuredString(data.ID)},
+		{Name: "name", Value: configuredString(data.Name)},
+	})
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	got, err := d.client.FindPhonebookGroup(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms phonebook group", err.Error())
 		return

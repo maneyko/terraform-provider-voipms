@@ -31,7 +31,9 @@ func didDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 		"failover_unreachable":     dsString("Unreachable failover route."),
 		"failover_noanswer":        dsString("No-answer failover route."),
 		"voicemail":                dsString("Attached mailbox."),
+		"voicemail_name":           dsString("Voicemail display name."),
 		"pop":                      dsInt("Point-of-presence id."),
+		"pop_hostname":             dsString("POP SIP hostname (e.g. `newyork7.voip.ms`)."),
 		"dialtime":                 dsInt("Ring time in seconds."),
 		"cnam":                     dsBool("CNAM lookup enabled."),
 		"e911":                     dsBool("E911 provisioned."),
@@ -87,6 +89,14 @@ func (d *didDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 	flattenDID(got, &data)
+	if err := fillDIDPOPHostname(ctx, d.client, &data); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID POP hostname", err.Error())
+		return
+	}
+	if err := fillDIDVoicemailName(ctx, d.client, &data); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID voicemail name", err.Error())
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -132,6 +142,14 @@ func (d *didsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	data.DIDs = make([]didModel, 0, len(items))
 	for i := range items {
 		data.DIDs = append(data.DIDs, flattenDIDCopy(&items[i]))
+	}
+	if err := fillDIDPOPHostnames(ctx, d.client, data.DIDs); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID POP hostnames", err.Error())
+		return
+	}
+	if err := fillDIDVoicemailNames(ctx, d.client, data.DIDs); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID voicemail names", err.Error())
+		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -44,6 +44,15 @@ func (c *Client) GetCallback(ctx context.Context, id string) (*Callback, error) 
 	return nil, fmt.Errorf("%w: callback %s", ErrNotFound, id)
 }
 
+// FindCallback returns a callback by id or description.
+func (c *Client) FindCallback(ctx context.Context, query string) (*Callback, error) {
+	items, err := c.GetCallbacks(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return MatchCallback(items, query)
+}
+
 // SetCallback creates (no callback id) or updates a callback.
 func (c *Client) SetCallback(ctx context.Context, params map[string]string) error {
 	return c.CallWrite(ctx, "setCallback", params, nil)

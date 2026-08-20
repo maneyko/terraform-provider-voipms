@@ -49,6 +49,15 @@ func (c *Client) GetPhonebookEntry(ctx context.Context, id string) (*PhonebookEn
 	return nil, fmt.Errorf("%w: phonebook entry %s", ErrNotFound, id)
 }
 
+// FindPhonebookEntry returns an entry by id or contact name.
+func (c *Client) FindPhonebookEntry(ctx context.Context, query string) (*PhonebookEntry, error) {
+	items, err := c.GetPhonebook(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return MatchPhonebookEntry(items, query)
+}
+
 // SetPhonebook creates (no phonebook id) or updates an entry.
 func (c *Client) SetPhonebook(ctx context.Context, params map[string]string) error {
 	return c.CallWrite(ctx, "setPhonebook", params, nil)
@@ -91,6 +100,15 @@ func (c *Client) GetPhonebookGroup(ctx context.Context, id string) (*PhonebookGr
 		return &items[0], nil
 	}
 	return nil, fmt.Errorf("%w: phonebook group %s", ErrNotFound, id)
+}
+
+// FindPhonebookGroup returns a group by id or name.
+func (c *Client) FindPhonebookGroup(ctx context.Context, query string) (*PhonebookGroup, error) {
+	items, err := c.GetPhonebookGroups(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return MatchPhonebookGroup(items, query)
 }
 
 // SetPhonebookGroup creates (no group id) or updates a group.

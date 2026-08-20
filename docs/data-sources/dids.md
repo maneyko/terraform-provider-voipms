@@ -51,6 +51,7 @@ Read-Only:
 - `note` (String) DID note.
 - `order_date` (String) Order date.
 - `pop` (Number) Point-of-presence id.
+- `pop_hostname` (String) POP SIP hostname (e.g. `newyork7.voip.ms`).
 - `record_calls` (Boolean) Inbound call recording.
 - `routing` (String) Inbound route.
 - `sms_available` (Boolean) SMS capable.
@@ -65,6 +66,7 @@ Read-Only:
 - `sms_url_callback_enabled` (Boolean) Legacy URL callback enabled.
 - `sms_url_callback_retry` (Boolean) Legacy URL callback retry.
 - `voicemail` (String) Attached mailbox.
+- `voicemail_name` (String) Voicemail display name.
 - `voicemail_threshold` (Number) Voicemail threshold.
 - `webhook` (String) Modern SMS webhook URL.
 - `webhook_enabled` (Boolean) Modern webhook enabled.

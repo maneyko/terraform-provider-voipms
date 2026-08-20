@@ -18,14 +18,15 @@ type voicemailsDataSource struct{ client *client.Client }
 
 func voicemailDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	mailbox := schema.StringAttribute{MarkdownDescription: "Mailbox number.", Computed: true}
+	name := schema.StringAttribute{MarkdownDescription: "Display name (e.g. `John`).", Computed: true}
 	if lookup {
-		mailbox.Required = true
-		mailbox.Computed = false
+		mailbox.Optional = true
+		name.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":                            schema.StringAttribute{MarkdownDescription: "Same as `mailbox`.", Computed: true},
 		"mailbox":                       mailbox,
-		"name":                          dsString("Display name."),
+		"name":                          name,
 		"password":                      dsSensitiveString("Mailbox PIN."),
 		"skip_password":                 dsBool("Skip PIN prompt."),
 		"email":                         dsString("Notification email."),
@@ -46,7 +47,7 @@ func (d *voicemailDataSource) Metadata(_ context.Context, req datasource.Metadat
 }
 func (d *voicemailDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a voicemail box by mailbox number (`getVoicemails`).",
+		MarkdownDescription: "Reads a voicemail box by mailbox number or display `name` (`getVoicemails`).",
 		Attributes:          voicemailDataSourceAttributes(true),
 	}
 }
@@ -59,7 +60,14 @@ func (d *voicemailDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetVoicemail(ctx, data.Mailbox.ValueString())
+	query := exactlyOneLookup(&resp.Diagnostics, "voicemail", []lookupField{
+		{Name: "mailbox", Value: configuredString(data.Mailbox)},
+		{Name: "name", Value: configuredString(data.Name)},
+	})
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	got, err := d.client.FindVoicemail(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms voicemail", err.Error())
 		return

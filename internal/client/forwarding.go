@@ -44,6 +44,15 @@ func (c *Client) GetForwarding(ctx context.Context, id string) (*Forwarding, err
 	return nil, fmt.Errorf("%w: forwarding %s", ErrNotFound, id)
 }
 
+// FindForwarding returns a forwarding by id or description.
+func (c *Client) FindForwarding(ctx context.Context, query string) (*Forwarding, error) {
+	items, err := c.GetForwardings(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return MatchForwarding(items, query)
+}
+
 // SetForwarding creates (no forwarding id) or updates a forwarding.
 func (c *Client) SetForwarding(ctx context.Context, params map[string]string) error {
 	return c.CallWrite(ctx, "setForwarding", params, nil)

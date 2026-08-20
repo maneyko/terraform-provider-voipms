@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -64,8 +65,8 @@ func (r *phonebookEntryResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"speed_dial": optStr("Speed-dial code."),
 			"callerid":   optStr("Caller ID name override."),
 			"note":       optStr("Note."),
-			"group":      optStr("Phonebook group id."),
-			"group_name": schema.StringAttribute{MarkdownDescription: "Group name (read-only).", Computed: true},
+			"group":      optStr("Phonebook group id. Prefer `group_name` or a `voipms_phonebook_group` reference."),
+			"group_name": optStr("Phonebook group name (e.g. `Spam`). Resolved to `group` when applying."),
 		},
 	}
 }
@@ -78,6 +79,10 @@ func (r *phonebookEntryResource) Create(ctx context.Context, req resource.Create
 	var plan phonebookEntryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.resolveGroup(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve phonebook group", err.Error())
 		return
 	}
 	params := phonebookEntryWriteParams(plan)
@@ -125,6 +130,10 @@ func (r *phonebookEntryResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if err := r.resolveGroup(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve phonebook group", err.Error())
+		return
+	}
 	current, err := r.client.GetPhonebookEntry(ctx, plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms phonebook entry before update", err.Error())
@@ -158,6 +167,22 @@ func (r *phonebookEntryResource) Delete(ctx context.Context, req resource.Delete
 
 func (r *phonebookEntryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func (r *phonebookEntryResource) resolveGroup(ctx context.Context, plan *phonebookEntryModel) error {
+	if plan.GroupName.IsNull() || plan.GroupName.IsUnknown() || plan.GroupName.ValueString() == "" {
+		return nil
+	}
+	grp, err := r.client.FindPhonebookGroup(ctx, plan.GroupName.ValueString())
+	if err != nil {
+		return err
+	}
+	id := grp.PhonebookGroup.String()
+	if !plan.Group.IsNull() && !plan.Group.IsUnknown() && plan.Group.ValueString() != "" && plan.Group.ValueString() != id {
+		return fmt.Errorf("group %q does not match group_name %q (id %s)", plan.Group.ValueString(), plan.GroupName.ValueString(), id)
+	}
+	plan.Group = types.StringValue(id)
+	return nil
 }
 
 func phonebookEntryWriteParams(m phonebookEntryModel) map[string]string {

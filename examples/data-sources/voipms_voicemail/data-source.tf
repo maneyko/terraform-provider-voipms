@@ -1,3 +1,3 @@
-data "voipms_voicemail" "main" {
-  mailbox = "101"
+data "voipms_voicemail" "johns_voicemail" {
+  name = "John"
 }

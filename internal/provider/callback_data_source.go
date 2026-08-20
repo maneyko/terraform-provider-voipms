@@ -18,13 +18,14 @@ type callbacksDataSource struct{ client *client.Client }
 
 func callbackDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	id := schema.StringAttribute{MarkdownDescription: "Callback id.", Computed: true}
+	description := schema.StringAttribute{MarkdownDescription: "Description (e.g. `Mobile`).", Computed: true}
 	if lookup {
-		id.Required = true
-		id.Computed = false
+		id.Optional = true
+		description.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":               id,
-		"description":      dsString("Description."),
+		"description":      description,
 		"number":           dsString("Callback destination number."),
 		"delay_before":     dsInt("Delay before prompt, in seconds."),
 		"response_timeout": dsInt("Response timeout in seconds."),
@@ -38,7 +39,7 @@ func (d *callbackDataSource) Metadata(_ context.Context, req datasource.Metadata
 }
 func (d *callbackDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a callback by id (`getCallbacks`).",
+		MarkdownDescription: "Reads a callback by id or `description` (`getCallbacks`).",
 		Attributes:          callbackDataSourceAttributes(true),
 	}
 }
@@ -51,7 +52,14 @@ func (d *callbackDataSource) Read(ctx context.Context, req datasource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetCallback(ctx, data.ID.ValueString())
+	query := exactlyOneLookup(&resp.Diagnostics, "callback", []lookupField{
+		{Name: "id", Value: configuredString(data.ID)},
+		{Name: "description", Value: configuredString(data.Description)},
+	})
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	got, err := d.client.FindCallback(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms callback", err.Error())
 		return
