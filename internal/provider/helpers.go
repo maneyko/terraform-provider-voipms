@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -152,3 +153,37 @@ func (m computedOptionalInt64) PlanModifyInt64(_ context.Context, req planmodifi
 func optString() planmodifier.String { return computedOptionalString{} }
 func optBool() planmodifier.Bool     { return computedOptionalBool{} }
 func optInt() planmodifier.Int64     { return computedOptionalInt64{} }
+
+func configuredString(v types.String) string {
+	if v.IsNull() || v.IsUnknown() {
+		return ""
+	}
+	return strings.TrimSpace(v.ValueString())
+}
+
+type lookupField struct {
+	Name  string
+	Value string
+}
+
+func exactlyOneLookup(diags *diag.Diagnostics, what string, fields []lookupField) string {
+	var names []string
+	query := ""
+	n := 0
+	for _, f := range fields {
+		names = append(names, f.Name)
+		if f.Value == "" {
+			continue
+		}
+		query = f.Value
+		n++
+	}
+	if n != 1 {
+		diags.AddError(
+			"Invalid "+what+" lookup",
+			"Set exactly one of "+strings.Join(names, ", ")+".",
+		)
+		return ""
+	}
+	return query
+}

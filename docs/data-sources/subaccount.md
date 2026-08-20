@@ -2,19 +2,19 @@
 page_title: "voipms_subaccount Data Source - voipms"
 subcategory: ""
 description: |-
-  Reads a single VoIP.ms sub-account by id or account (getSubAccounts).
+  Reads a single VoIP.ms sub-account by id, account, or username (getSubAccounts).
 ---
 
 # voipms_subaccount (Data Source)
 
-Reads a single VoIP.ms sub-account by `id` or `account` (`getSubAccounts`).
+Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`).
 
 
 ## Example Usage
 
 ```terraform
 data "voipms_subaccount" "gateway" {
-  account = "100001_gateway"
+  username = "gateway"
 }
 ```
 
@@ -26,6 +26,7 @@ data "voipms_subaccount" "gateway" {
 
 - `account` (String) Full SIP login (`{main}_{username}`).
 - `id` (String) Numeric VoIP.ms sub-account id, full SIP login, or username suffix.
+- `username` (String) Sub-account username suffix.
 
 ### Read-Only
 

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -38,7 +39,9 @@ type didModel struct {
 	FailoverUnreachable   types.String `tfsdk:"failover_unreachable"`
 	FailoverNoanswer      types.String `tfsdk:"failover_noanswer"`
 	Voicemail             types.String `tfsdk:"voicemail"`
+	VoicemailName         types.String `tfsdk:"voicemail_name"`
 	POP                   types.Int64  `tfsdk:"pop"`
+	POPHostname           types.String `tfsdk:"pop_hostname"`
 	Dialtime              types.Int64  `tfsdk:"dialtime"`
 	CNAM                  types.Bool   `tfsdk:"cnam"`
 	E911                  types.Bool   `tfsdk:"e911"`
@@ -99,8 +102,10 @@ func didResourceAttributes() map[string]schema.Attribute {
 		"failover_busy":            optStr("Busy failover route."),
 		"failover_unreachable":     optStr("Unreachable failover route."),
 		"failover_noanswer":        optStr("No-answer failover route."),
-		"voicemail":                optStr("Mailbox attached to the DID (`0` means none)."),
-		"pop":                      optIntAttr("Point-of-presence id (see `voipms_servers`)."),
+		"voicemail":                optStr("Mailbox attached to the DID (`0` means none). Prefer `voicemail_name` or a `voipms_voicemail` reference."),
+		"voicemail_name":           optStr("Voicemail display name (e.g. `John`). Resolved to `voicemail` when applying."),
+		"pop":                      optIntAttr("Point-of-presence id. Prefer `pop_hostname` for a visual value such as `newyork7.voip.ms`."),
+		"pop_hostname":             optStr("POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Resolved to `pop` when applying."),
 		"dialtime":                 optIntAttr("Ring time in seconds before failover/voicemail."),
 		"cnam":                     optBoolAttr("Enable CNAM lookup on inbound calls."),
 		"e911":                     schema.BoolAttribute{MarkdownDescription: "Whether E911 is provisioned (read-only; set in the portal).", Computed: true},
@@ -166,7 +171,7 @@ func (r *didResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.applyDID(ctx, plan); err != nil {
+	if err := r.applyDID(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Unable to configure VoIP.ms DID", err.Error())
 		return
 	}
@@ -176,6 +181,14 @@ func (r *didResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 	flattenDID(got, &plan)
+	if err := r.keepOrFillPOPHostname(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID POP hostname", err.Error())
+		return
+	}
+	if err := r.keepOrFillVoicemailName(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID voicemail name", err.Error())
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -195,6 +208,14 @@ func (r *didResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 	flattenDID(got, &state)
+	if err := r.keepOrFillPOPHostname(ctx, &state); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID POP hostname", err.Error())
+		return
+	}
+	if err := r.keepOrFillVoicemailName(ctx, &state); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID voicemail name", err.Error())
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -204,7 +225,7 @@ func (r *didResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.applyDID(ctx, plan); err != nil {
+	if err := r.applyDID(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Unable to update VoIP.ms DID", err.Error())
 		return
 	}
@@ -214,6 +235,14 @@ func (r *didResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 	flattenDID(got, &plan)
+	if err := r.keepOrFillPOPHostname(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID POP hostname", err.Error())
+		return
+	}
+	if err := r.keepOrFillVoicemailName(ctx, &plan); err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID voicemail name", err.Error())
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -227,12 +256,18 @@ func (r *didResource) ImportState(ctx context.Context, req resource.ImportStateR
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
-func (r *didResource) applyDID(ctx context.Context, plan didModel) error {
+func (r *didResource) applyDID(ctx context.Context, plan *didModel) error {
+	if err := r.resolvePOP(ctx, plan); err != nil {
+		return err
+	}
+	if err := r.resolveVoicemail(ctx, plan); err != nil {
+		return err
+	}
 	current, err := r.client.GetDID(ctx, plan.DID.ValueString())
 	if err != nil {
 		return err
 	}
-	info := overlayParams(current.SetInfoParams(), didInfoParams(plan))
+	info := overlayParams(current.SetInfoParams(), didInfoParams(*plan))
 	info["did"] = plan.DID.ValueString()
 	if err := r.client.SetDIDInfo(ctx, info); err != nil {
 		return err
@@ -240,9 +275,124 @@ func (r *didResource) applyDID(ctx context.Context, plan didModel) error {
 	if !current.SMSAvailable.Bool() && (current.SMSAvailable.String() == "0" || current.SMSAvailable.String() == "") {
 		return nil
 	}
-	sms := overlayParams(current.SetSMSParams(), didSMSParams(plan))
+	sms := overlayParams(current.SetSMSParams(), didSMSParams(*plan))
 	sms["did"] = plan.DID.ValueString()
 	return r.client.SetSMS(ctx, sms)
+}
+
+func (r *didResource) resolvePOP(ctx context.Context, plan *didModel) error {
+	if plan.POPHostname.IsNull() || plan.POPHostname.IsUnknown() || plan.POPHostname.ValueString() == "" {
+		return nil
+	}
+	srv, err := r.client.FindServer(ctx, plan.POPHostname.ValueString())
+	if err != nil {
+		return err
+	}
+	n, ok := srv.POP.Int64()
+	if !ok {
+		return fmt.Errorf("POP %q has no numeric id", plan.POPHostname.ValueString())
+	}
+	if !plan.POP.IsNull() && !plan.POP.IsUnknown() && plan.POP.ValueInt64() != n {
+		return fmt.Errorf("pop (%d) does not match pop_hostname %q (id %d)", plan.POP.ValueInt64(), plan.POPHostname.ValueString(), n)
+	}
+	plan.POP = types.Int64Value(n)
+	return nil
+}
+
+func (r *didResource) keepOrFillPOPHostname(ctx context.Context, m *didModel) error {
+	return fillDIDPOPHostname(ctx, r.client, m)
+}
+
+func (r *didResource) resolveVoicemail(ctx context.Context, plan *didModel) error {
+	if plan.VoicemailName.IsNull() || plan.VoicemailName.IsUnknown() || plan.VoicemailName.ValueString() == "" {
+		return nil
+	}
+	box, err := r.client.FindVoicemail(ctx, plan.VoicemailName.ValueString())
+	if err != nil {
+		return err
+	}
+	mailbox := box.Mailbox.String()
+	if !plan.Voicemail.IsNull() && !plan.Voicemail.IsUnknown() && plan.Voicemail.ValueString() != "" && plan.Voicemail.ValueString() != mailbox {
+		return fmt.Errorf("voicemail %q does not match voicemail_name %q (mailbox %s)", plan.Voicemail.ValueString(), plan.VoicemailName.ValueString(), mailbox)
+	}
+	plan.Voicemail = types.StringValue(mailbox)
+	return nil
+}
+
+func (r *didResource) keepOrFillVoicemailName(ctx context.Context, m *didModel) error {
+	return fillDIDVoicemailName(ctx, r.client, m)
+}
+
+func fillDIDVoicemailName(ctx context.Context, c *client.Client, m *didModel) error {
+	if c == nil || m.Voicemail.IsNull() || m.Voicemail.IsUnknown() || m.Voicemail.ValueString() == "" || m.Voicemail.ValueString() == "0" {
+		return nil
+	}
+	items, err := c.GetVoicemails(ctx, "")
+	if err != nil {
+		return err
+	}
+	if !m.VoicemailName.IsNull() && !m.VoicemailName.IsUnknown() && m.VoicemailName.ValueString() != "" {
+		if box, err := client.MatchVoicemail(items, m.VoicemailName.ValueString()); err == nil && box.Mailbox.String() == m.Voicemail.ValueString() {
+			return nil
+		}
+	}
+	if name := client.NameForMailbox(items, m.Voicemail.ValueString()); name != "" {
+		m.VoicemailName = types.StringValue(name)
+	}
+	return nil
+}
+
+func fillDIDVoicemailNames(ctx context.Context, c *client.Client, dids []didModel) error {
+	if c == nil || len(dids) == 0 {
+		return nil
+	}
+	items, err := c.GetVoicemails(ctx, "")
+	if err != nil {
+		return err
+	}
+	for i := range dids {
+		if name := client.NameForMailbox(items, dids[i].Voicemail.ValueString()); name != "" {
+			dids[i].VoicemailName = types.StringValue(name)
+		}
+	}
+	return nil
+}
+
+func fillDIDPOPHostname(ctx context.Context, c *client.Client, m *didModel) error {
+	if c == nil || m.POP.IsNull() || m.POP.IsUnknown() {
+		return nil
+	}
+	servers, err := c.GetServersInfo(ctx, "")
+	if err != nil {
+		return err
+	}
+	if !m.POPHostname.IsNull() && !m.POPHostname.IsUnknown() && m.POPHostname.ValueString() != "" {
+		if srv, err := client.MatchServer(servers, m.POPHostname.ValueString()); err == nil {
+			if n, ok := srv.POP.Int64(); ok && n == m.POP.ValueInt64() {
+				return nil
+			}
+		}
+	}
+	if h := client.HostnameForPOP(servers, m.POP.ValueInt64()); h != "" {
+		m.POPHostname = types.StringValue(h)
+	}
+	return nil
+}
+
+func fillDIDPOPHostnames(ctx context.Context, c *client.Client, dids []didModel) error {
+	if c == nil || len(dids) == 0 {
+		return nil
+	}
+	servers, err := c.GetServersInfo(ctx, "")
+	if err != nil {
+		return err
+	}
+	for i := range dids {
+		if h := client.HostnameForPOP(servers, dids[i].POP.ValueInt64()); h != "" {
+			dids[i].POPHostname = types.StringValue(h)
+		}
+	}
+	return nil
 }
 
 func didInfoParams(m didModel) map[string]string {

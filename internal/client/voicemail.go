@@ -44,6 +44,15 @@ func (c *Client) GetVoicemail(ctx context.Context, mailbox string) (*Voicemail, 
 	return nil, fmt.Errorf("%w: voicemail %s", ErrNotFound, mailbox)
 }
 
+// FindVoicemail returns a mailbox by number or display name.
+func (c *Client) FindVoicemail(ctx context.Context, query string) (*Voicemail, error) {
+	items, err := c.GetVoicemails(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return MatchVoicemail(items, query)
+}
+
 // CreateVoicemail creates a mailbox. params must include digits (mailbox number).
 func (c *Client) CreateVoicemail(ctx context.Context, params map[string]string) error {
 	return c.CallWrite(ctx, "createVoicemail", params, nil)

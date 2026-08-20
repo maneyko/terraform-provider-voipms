@@ -239,6 +239,43 @@ func TestGetSubAccountByLogin(t *testing.T) {
 	}
 }
 
+func TestGetSubAccountByNumericID(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		account := r.URL.Query().Get("account")
+		switch account {
+		case "2001":
+			// VoIP.ms rejects numeric id filters.
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "no_subaccount"})
+		case "":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": "success",
+				"accounts": []map[string]any{
+					{"id": "2001", "account": "100001_gateway", "username": "gateway"},
+					{"id": "2002", "account": "100001_other", "username": "other"},
+				},
+			})
+		default:
+			t.Errorf("unexpected account filter %q", account)
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "no_subaccount"})
+		}
+	})
+
+	got, err := c.GetSubAccount(context.Background(), "2001")
+	if err != nil {
+		t.Fatalf("GetSubAccount() error = %v", err)
+	}
+	if got.ID.String() != "2001" || got.Username.String() != "gateway" {
+		t.Errorf("got id=%s username=%s", got.ID, got.Username)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2 (filtered miss + full list)", calls)
+	}
+}
+
 func TestGetSubAccountNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -358,7 +395,7 @@ func TestGetServersInfo(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": "success",
 			"servers": []map[string]any{
-				{"server_pop": "73", "server_hostname": "newyork7.voip.ms", "server_name": "New York 7", "server_recommended": 1},
+				{"server_pop": "73", "server_hostname": "newyork7.voip.ms", "server_name": "New York 7", "server_country": "US", "server_recommended": 1},
 			},
 		})
 	})
@@ -371,6 +408,87 @@ func TestGetServersInfo(t *testing.T) {
 	}
 	if !got.Recommended.Bool() {
 		t.Error("recommended should be true")
+	}
+}
+
+func TestMatchServer(t *testing.T) {
+	t.Parallel()
+
+	servers := []Server{
+		{POP: "73", Hostname: "newyork7.voip.ms", Name: "New York 7", Country: "US", Shortname: "NY7"},
+		{POP: "1", Hostname: "atlanta.voip.ms", Name: "Atlanta", Country: "US"},
+	}
+	cases := []string{"73", "newyork7.voip.ms", "New York 7", "NY7", "New York 7, US"}
+	for _, q := range cases {
+		got, err := MatchServer(servers, q)
+		if err != nil {
+			t.Errorf("MatchServer(%q) error = %v", q, err)
+			continue
+		}
+		if got.POP.String() != "73" {
+			t.Errorf("MatchServer(%q) pop = %s", q, got.POP)
+		}
+	}
+	if _, err := MatchServer(servers, "missing"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing query error = %v", err)
+	}
+}
+
+func TestMatchNamedObjects(t *testing.T) {
+	t.Parallel()
+
+	vms := []Voicemail{{Mailbox: "101", Name: "John"}}
+	got, err := MatchVoicemail(vms, "John")
+	if err != nil || got.Mailbox.String() != "101" {
+		t.Fatalf("MatchVoicemail: %v %+v", err, got)
+	}
+	if NameForMailbox(vms, "101") != "John" {
+		t.Errorf("NameForMailbox = %q", NameForMailbox(vms, "101"))
+	}
+
+	fwds := []Forwarding{{Forwarding: "1001", Description: "Mobile"}}
+	fwd, err := MatchForwarding(fwds, "Mobile")
+	if err != nil || fwd.Forwarding.String() != "1001" {
+		t.Fatalf("MatchForwarding: %v %+v", err, fwd)
+	}
+
+	cbs := []Callback{{Callback: "3001", Description: "Mobile"}}
+	cb, err := MatchCallback(cbs, "Mobile")
+	if err != nil || cb.Callback.String() != "3001" {
+		t.Fatalf("MatchCallback: %v %+v", err, cb)
+	}
+
+	grps := []PhonebookGroup{{PhonebookGroup: "5001", Name: "Spam"}}
+	grp, err := MatchPhonebookGroup(grps, "Spam")
+	if err != nil || grp.PhonebookGroup.String() != "5001" {
+		t.Fatalf("MatchPhonebookGroup: %v %+v", err, grp)
+	}
+}
+
+func TestFindServerByHostname(t *testing.T) {
+	t.Parallel()
+
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("server_pop") != "" {
+			t.Errorf("FindServer should list all POPs, got server_pop=%q", r.URL.Query().Get("server_pop"))
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "success",
+			"servers": []map[string]any{
+				{"server_pop": "1", "server_hostname": "atlanta.voip.ms", "server_name": "Atlanta"},
+				{"server_pop": "73", "server_hostname": "newyork7.voip.ms", "server_name": "New York 7", "server_country": "US"},
+			},
+		})
+	})
+	got, err := c.FindServer(context.Background(), "newyork7.voip.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.POP.String() != "73" {
+		t.Errorf("pop = %s", got.POP)
+	}
+	if HostnameForPOP([]Server{*got}, 73) != "newyork7.voip.ms" {
+		t.Errorf("HostnameForPOP = %q", HostnameForPOP([]Server{*got}, 73))
 	}
 }
 

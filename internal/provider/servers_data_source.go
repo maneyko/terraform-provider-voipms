@@ -29,16 +29,19 @@ type serverModel struct {
 
 func serverDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	pop := schema.StringAttribute{MarkdownDescription: "Point-of-presence id (`server_pop`).", Computed: true}
+	hostname := schema.StringAttribute{MarkdownDescription: "SIP hostname (e.g. `newyork7.voip.ms`).", Computed: true}
+	name := schema.StringAttribute{MarkdownDescription: "Server display name (e.g. `New York 7`).", Computed: true}
 	if lookup {
-		pop.Required = true
-		pop.Computed = false
+		pop.Optional = true
+		hostname.Optional = true
+		name.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":          schema.StringAttribute{MarkdownDescription: "Same as `pop`.", Computed: true},
 		"pop":         pop,
-		"name":        dsString("Server display name."),
+		"name":        name,
 		"shortname":   dsString("Short server name."),
-		"hostname":    dsString("SIP hostname (e.g. `newyork7.voip.ms`)."),
+		"hostname":    hostname,
 		"ip":          dsString("Server IP address."),
 		"country":     dsString("Server country."),
 		"recommended": dsBool("Whether VoIP.ms marks this POP as recommended."),
@@ -67,7 +70,7 @@ func (d *serverDataSource) Metadata(_ context.Context, req datasource.MetadataRe
 }
 func (d *serverDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Looks up a VoIP.ms POP by id (`getServersInfo`). Use this to map `pop = 73` to `newyork7.voip.ms`.",
+		MarkdownDescription: "Looks up a VoIP.ms POP (`getServersInfo`) by `pop` id, `hostname`, or display `name`.",
 		Attributes:          serverDataSourceAttributes(true),
 	}
 }
@@ -80,7 +83,27 @@ func (d *serverDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetServer(ctx, data.POP.ValueString())
+	query, n := "", 0
+	if !data.POP.IsNull() && data.POP.ValueString() != "" {
+		query = data.POP.ValueString()
+		n++
+	}
+	if !data.Hostname.IsNull() && data.Hostname.ValueString() != "" {
+		query = data.Hostname.ValueString()
+		n++
+	}
+	if !data.Name.IsNull() && data.Name.ValueString() != "" {
+		query = data.Name.ValueString()
+		n++
+	}
+	if n != 1 {
+		resp.Diagnostics.AddError(
+			"Invalid VoIP.ms server lookup",
+			"Set exactly one of pop, hostname, or name.",
+		)
+		return
+	}
+	got, err := d.client.FindServer(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms server", err.Error())
 		return

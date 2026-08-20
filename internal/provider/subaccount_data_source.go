@@ -38,14 +38,19 @@ func subaccountDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 		MarkdownDescription: "Full SIP login (`{main}_{username}`).",
 		Computed:            true,
 	}
+	username := schema.StringAttribute{
+		MarkdownDescription: "Sub-account username suffix.",
+		Computed:            true,
+	}
 	if lookup {
 		id.Optional = true
 		account.Optional = true
+		username.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":                     id,
 		"account":                account,
-		"username":               dsString("Sub-account username suffix."),
+		"username":               username,
 		"description":            dsString("Portal description."),
 		"protocol":               dsString("Protocol id."),
 		"auth_type":              dsString("Authentication type."),
@@ -103,7 +108,7 @@ func (d *subaccountDataSource) Metadata(_ context.Context, req datasource.Metada
 
 func (d *subaccountDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a single VoIP.ms sub-account by `id` or `account` (`getSubAccounts`).",
+		MarkdownDescription: "Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`).",
 		Attributes:          subaccountDataSourceAttributes(true),
 	}
 }
@@ -122,12 +127,12 @@ func (d *subaccountDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		resp.Diagnostics.AddError("Client not configured", "The provider client was nil while reading voipms_subaccount.")
 		return
 	}
-	lookup := data.ID.ValueString()
-	if lookup == "" {
-		lookup = data.Account.ValueString()
-	}
-	if lookup == "" {
-		resp.Diagnostics.AddError("Missing sub-account identifier", "Set id or account to look up a sub-account.")
+	lookup := exactlyOneLookup(&resp.Diagnostics, "sub-account", []lookupField{
+		{Name: "id", Value: configuredString(data.ID)},
+		{Name: "account", Value: configuredString(data.Account)},
+		{Name: "username", Value: configuredString(data.Username)},
+	})
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	acct, err := d.client.GetSubAccount(ctx, lookup)

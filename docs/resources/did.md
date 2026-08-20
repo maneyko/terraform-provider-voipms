@@ -13,16 +13,34 @@ Manages routing, failover, voicemail, POP, and SMS settings for a DID that is al
 ## Example Usage
 
 ```terraform
+locals {
+  my_pops = {
+    ny7 = "newyork7.voip.ms"
+  }
+}
+
+data "voipms_voicemail" "johns_voicemail" {
+  name = "John"
+}
+
+data "voipms_forwarding" "mobile" {
+  description = "Mobile"
+}
+
+data "voipms_subaccount" "gateway" {
+  username = "gateway"
+}
+
 resource "voipms_did" "home" {
   did                  = "5550001001"
   note                 = "Home line"
-  routing              = "account:100001_gateway"
-  pop                  = 73
+  routing              = "account:${data.voipms_subaccount.gateway.account}"
+  pop_hostname         = local.my_pops.ny7
   dialtime             = 30
-  voicemail            = "101"
-  failover_busy        = "vm:101"
-  failover_noanswer    = "vm:101"
-  failover_unreachable = "vm:101"
+  voicemail            = data.voipms_voicemail.johns_voicemail.mailbox
+  failover_busy        = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
+  failover_noanswer    = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
+  failover_unreachable = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
 
   sms_enabled     = true
   webhook         = "https://example.lambda-url.us-east-1.on.aws/"
@@ -48,7 +66,8 @@ resource "voipms_did" "home" {
 - `failover_noanswer` (String) No-answer failover route.
 - `failover_unreachable` (String) Unreachable failover route.
 - `note` (String) Free-form DID note (e.g. `Home line`).
-- `pop` (Number) Point-of-presence id (see `voipms_servers`).
+- `pop` (Number) Point-of-presence id. Prefer `pop_hostname` for a visual value such as `newyork7.voip.ms`.
+- `pop_hostname` (String) POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Resolved to `pop` when applying.
 - `record_calls` (Boolean) Record inbound calls.
 - `routing` (String) Inbound route, e.g. `account:100001_gateway`, `fwd:1001`, `vm:101`.
 - `sms_email` (String) Email address for inbound SMS.
@@ -61,7 +80,8 @@ resource "voipms_did" "home" {
 - `sms_url_callback` (String) Legacy SMS URL callback (supports `{TO}`, `{FROM}`, `{MESSAGE}`).
 - `sms_url_callback_enabled` (Boolean) Enable the legacy URL callback.
 - `sms_url_callback_retry` (Boolean) Retry the legacy URL callback on failure.
-- `voicemail` (String) Mailbox attached to the DID (`0` means none).
+- `voicemail` (String) Mailbox attached to the DID (`0` means none). Prefer `voicemail_name` or a `voipms_voicemail` reference.
+- `voicemail_name` (String) Voicemail display name (e.g. `John`). Resolved to `voicemail` when applying.
 - `voicemail_threshold` (Number) Voicemail threshold.
 - `webhook` (String) Modern SMS webhook URL.
 - `webhook_enabled` (Boolean) Enable the modern SMS webhook.

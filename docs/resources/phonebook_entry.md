@@ -36,13 +36,13 @@ resource "voipms_phonebook_entry" "blocked_prefix" {
 ### Optional
 
 - `callerid` (String) Caller ID name override.
-- `group` (String) Phonebook group id.
+- `group` (String) Phonebook group id. Prefer `group_name` or a `voipms_phonebook_group` reference.
+- `group_name` (String) Phonebook group name (e.g. `Spam`). Resolved to `group` when applying.
 - `note` (String) Note.
 - `speed_dial` (String) Speed-dial code.
 
 ### Read-Only
 
-- `group_name` (String) Group name (read-only).
 - `id` (String) VoIP.ms phonebook entry id.
 
 ## Import
@@ -50,6 +50,6 @@ resource "voipms_phonebook_entry" "blocked_prefix" {
 Import is supported using the following syntax:
 
 ```shell
-terraform import voipms_phonebook_entry.blocked_prefix 476494
+terraform import voipms_phonebook_entry.blocked_prefix 6001
 ```
 

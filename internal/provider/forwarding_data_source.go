@@ -18,15 +18,16 @@ type forwardingsDataSource struct{ client *client.Client }
 
 func forwardingDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	id := schema.StringAttribute{MarkdownDescription: "Forwarding id.", Computed: true}
+	description := schema.StringAttribute{MarkdownDescription: "Description (e.g. `Mobile`).", Computed: true}
 	if lookup {
-		id.Required = true
-		id.Computed = false
+		id.Optional = true
+		description.Optional = true
 	}
 	return map[string]schema.Attribute{
 		"id":                id,
 		"phone_number":      dsString("Destination number."),
 		"callerid_override": dsString("Caller ID override."),
-		"description":       dsString("Description."),
+		"description":       description,
 		"dtmf_digits":       dsString("DTMF digits sent after answer."),
 		"pause":             dsString("Pause before DTMF."),
 		"diversion_header":  dsBool("SIP Diversion header enabled."),
@@ -38,7 +39,7 @@ func (d *forwardingDataSource) Metadata(_ context.Context, req datasource.Metada
 }
 func (d *forwardingDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a call forwarding by id (`getForwardings`).",
+		MarkdownDescription: "Reads a call forwarding by id or `description` (`getForwardings`).",
 		Attributes:          forwardingDataSourceAttributes(true),
 	}
 }
@@ -51,7 +52,14 @@ func (d *forwardingDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	got, err := d.client.GetForwarding(ctx, data.ID.ValueString())
+	query := exactlyOneLookup(&resp.Diagnostics, "forwarding", []lookupField{
+		{Name: "id", Value: configuredString(data.ID)},
+		{Name: "description", Value: configuredString(data.Description)},
+	})
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	got, err := d.client.FindForwarding(ctx, query)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read VoIP.ms forwarding", err.Error())
 		return

@@ -27,21 +27,42 @@ func (c *Client) GetSubAccounts(ctx context.Context, account string) ([]SubAccou
 	return resp.Accounts, nil
 }
 
-// GetSubAccount returns one sub-account by API id or SIP login (`{main}_{username}`).
+// GetSubAccount returns one sub-account by API id, SIP login (`{main}_{username}`),
+// or username suffix. VoIP.ms only accepts the SIP login (or an empty filter) on
+// getSubAccounts — numeric ids return status no_subaccount — so we fall back to a
+// full list and match locally when a filtered call returns nothing.
 func (c *Client) GetSubAccount(ctx context.Context, account string) (*SubAccount, error) {
 	accounts, err := c.GetSubAccounts(ctx, account)
 	if err != nil {
 		return nil, err
 	}
+	if found := matchSubAccount(accounts, account); found != nil {
+		return found, nil
+	}
+	if account == "" {
+		return nil, fmt.Errorf("%w: sub-account %s", ErrNotFound, account)
+	}
+	// Filtered lookup miss (typical for numeric id): list all and match.
+	all, err := c.GetSubAccounts(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	if found := matchSubAccount(all, account); found != nil {
+		return found, nil
+	}
+	return nil, fmt.Errorf("%w: sub-account %s", ErrNotFound, account)
+}
+
+func matchSubAccount(accounts []SubAccount, account string) *SubAccount {
 	for i := range accounts {
 		if accounts[i].ID.String() == account || accounts[i].Account.String() == account || accounts[i].Username.String() == account {
-			return &accounts[i], nil
+			return &accounts[i]
 		}
 	}
 	if len(accounts) == 1 && account != "" {
-		return &accounts[0], nil
+		return &accounts[0]
 	}
-	return nil, fmt.Errorf("%w: sub-account %s", ErrNotFound, account)
+	return nil
 }
 
 // CreateSubAccount creates a sub-account. username is the suffix only (not account_suffix).

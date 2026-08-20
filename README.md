@@ -25,7 +25,7 @@ Objects listed in `docs/provider-roadmap.md` are covered: a **resource** to crea
 | Resource / data / list | `voipms_caller_id_filter` / `voipms_caller_id_filters` | `getCallerIDFiltering` / `setCallerIDFiltering` / `delCallerIDFiltering` | Spam / CID rules |
 | Resource / data / list | `voipms_phonebook_entry` / `voipms_phonebook_entries` | `getPhonebook` / `setPhonebook` / `delPhonebook` | Phonebook entries |
 | Resource / data / list | `voipms_phonebook_group` / `voipms_phonebook_groups` | `getPhonebookGroups` / `setPhonebookGroup` / `delPhonebookGroup` | Phonebook groups |
-| Data / list | `voipms_server` / `voipms_servers` | `getServersInfo` | POP id → hostname (e.g. `73` → `newyork7.voip.ms`) |
+| Data / list | `voipms_server` / `voipms_servers` | `getServersInfo` | POP id / hostname / name (e.g. `newyork7.voip.ms`) |
 
 IVRs, ring groups, queues, time conditions, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
 
@@ -187,9 +187,14 @@ Manage an existing DID (import it first; destroy will not cancel the number):
 
 ```hcl
 resource "voipms_did" "office" {
-  did     = "5550001002"
-  routing = "fwd:${voipms_forwarding.mobile.id}"
-  pop     = 73
+  did          = "5550001002"
+  routing      = "fwd:${voipms_forwarding.mobile.id}"
+  pop_hostname = "newyork7.voip.ms"
+  voicemail    = voipms_voicemail.main.mailbox
+
+  failover_busy        = "vm:${voipms_voicemail.main.mailbox}"
+  failover_noanswer    = "vm:${voipms_voicemail.main.mailbox}"
+  failover_unreachable = "vm:${voipms_voicemail.main.mailbox}"
 }
 
 resource "voipms_forwarding" "mobile" {
