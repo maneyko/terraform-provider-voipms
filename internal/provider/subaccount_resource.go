@@ -14,6 +14,11 @@ import (
 	"github.com/vetal-ca-org/terraform-provider-voipms/internal/client"
 )
 
+// encryptedSIPTrafficDescription is VoIP.ms Encrypted SIP Traffic (API sip_traffic).
+const encryptedSIPTrafficDescription = "VoIP.ms **Encrypted SIP Traffic** for this sub-account.\n\n" +
+	"`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.\n\n" +
+	"`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488."
+
 var (
 	_ resource.Resource                 = &subaccountResource{}
 	_ resource.ResourceWithConfigure    = &subaccountResource{}
@@ -49,7 +54,7 @@ type subaccountModel struct {
 	AllowedCodecs        types.String `tfsdk:"allowed_codecs"`
 	DTMFMode             types.String `tfsdk:"dtmf_mode"`
 	NAT                  types.String `tfsdk:"nat"`
-	SIPTraffic           types.Bool   `tfsdk:"sip_traffic"`
+	SIPTraffic           types.Bool   `tfsdk:"encrypted_sip_traffic"`
 	MaxExpiry            types.Int64  `tfsdk:"max_expiry"`
 	RTPTimeout           types.Int64  `tfsdk:"rtp_timeout"`
 	RTPHoldTimeout       types.Int64  `tfsdk:"rtp_hold_timeout"`
@@ -182,13 +187,11 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			Computed:            true,
 			PlanModifiers:       []planmodifier.String{optString()},
 		},
-		"sip_traffic": schema.BoolAttribute{
-			MarkdownDescription: "VoIP.ms **Encrypted SIP Traffic** for this sub-account.\n\n" +
-				"`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.\n\n" +
-				"`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.",
-			Optional:      true,
-			Computed:      true,
-			PlanModifiers: []planmodifier.Bool{optBool()},
+		"encrypted_sip_traffic": schema.BoolAttribute{
+			MarkdownDescription: encryptedSIPTrafficDescription,
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers:       []planmodifier.Bool{optBool()},
 		},
 		"max_expiry": schema.Int64Attribute{
 			MarkdownDescription: "Maximum SIP registration expiry in seconds.",
@@ -298,7 +301,7 @@ func (r *subaccountResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *subaccountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version: 1,
+		Version: 2,
 		MarkdownDescription: "Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAccount`). " +
 			"Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones.",
 		Attributes: subaccountResourceAttributes(),

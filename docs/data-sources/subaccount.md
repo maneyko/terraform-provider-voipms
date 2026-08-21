@@ -44,6 +44,11 @@ data "voipms_subaccount" "gateway" {
 - `enable_internal_cnam` (Boolean) Whether internal CNAM is enabled.
 - `enable_ip_restriction` (Boolean) Whether IP restriction is enabled.
 - `enable_pop_restriction` (Boolean) Whether POP restriction is enabled.
+- `encrypted_sip_traffic` (Boolean) VoIP.ms **Encrypted SIP Traffic** for this sub-account.
+
+`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.
+
+`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 - `internal_dialtime` (String) Internal ring time.
 - `internal_extension` (String) Internal extension.
 - `internal_voicemail` (String) Internal voicemail mailbox.
@@ -61,4 +66,3 @@ data "voipms_subaccount" "gateway" {
 - `record_calls` (Boolean) Whether calls are recorded.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.
-- `sip_traffic` (Boolean) Encrypted SIP traffic (TLS/SRTP) enabled.

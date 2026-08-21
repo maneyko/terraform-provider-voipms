@@ -8,6 +8,7 @@ All notable changes to this provider will be documented in this file.
 
 - `voipms_subaccount.canada_routing` accepts `value` / `premium` (API `1` / `2`). Reads return the name.
 - `voipms_subaccount.allow225` renamed to `allow_225_balance` (state upgraded from schema v0).
+- `voipms_subaccount.sip_traffic` renamed to `encrypted_sip_traffic` (state upgraded from schema v1). The VoIP.ms API field remains `sip_traffic`.
 - `voipms_subaccount.pop_restriction` is unset in state when `enable_pop_restriction` is false (VoIP.ms still returns the full POP list).
 - DID `routing` / failover `fwd:` and `vm:` accept a forwarding description or voicemail name (and slugs) as well as numeric ids.
 - Unfiltered `getServersInfo` / `getForwardings` / `getVoicemails` / `getSubAccounts` responses are cached for the Terraform run so DID plans do not trip the VoIP.ms per-minute API limit.

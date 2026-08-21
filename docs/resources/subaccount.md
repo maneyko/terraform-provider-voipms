@@ -14,17 +14,15 @@ Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAcc
 
 ```terraform
 resource "voipms_subaccount" "gateway" {
-  username           = "gateway"
-  password           = var.gateway_sip_password
-  description        = "Common SIP gateway"
-  protocol           = "1"
-  auth_type          = "1"
-  device_type        = "1"
-  allowed_codecs     = "ulaw;g722"
-  nat                = "no"
-  sip_traffic        = true
-  canada_routing     = "premium"
-  allow_225_balance  = false
+  username              = "gateway"
+  password              = var.gateway_sip_password
+  description           = "Common SIP gateway"
+  device_type           = "1"
+  allowed_codecs        = "ulaw;g722"
+  nat                   = "no"
+  encrypted_sip_traffic = true
+  canada_routing        = "premium"
+  allow_225_balance     = false
 }
 ```
 
@@ -54,6 +52,11 @@ For a PBX or phone endpoint, leave this disabled unless users of that extension 
 - `enable_internal_cnam` (Boolean) Send internal Caller ID name.
 - `enable_ip_restriction` (Boolean) Restrict registrations to `ip_restriction`.
 - `enable_pop_restriction` (Boolean) Restrict this sub-account to `pop_restriction` servers. Leave false for no POP restriction.
+- `encrypted_sip_traffic` (Boolean) VoIP.ms **Encrypted SIP Traffic** for this sub-account.
+
+`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.
+
+`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 - `internal_dialtime` (String) Internal ring time in seconds.
 - `internal_extension` (String) Internal extension digits.
 - `internal_voicemail` (String) Internal voicemail mailbox.
@@ -71,11 +74,6 @@ For a PBX or phone endpoint, leave this disabled unless users of that extension 
 - `record_calls` (Boolean) Record calls for this sub-account.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.
-- `sip_traffic` (Boolean) VoIP.ms **Encrypted SIP Traffic** for this sub-account.
-
-`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.
-
-`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 
 ### Read-Only
 
