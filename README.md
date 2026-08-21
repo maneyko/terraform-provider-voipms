@@ -162,7 +162,7 @@ terraform {
   required_providers {
     voipms = {
       source  = "vetal-ca-org/voipms"
-      version = "~> 0.1"
+      version = "~> 0.2"
     }
   }
 }
@@ -192,14 +192,14 @@ Manage an existing DID (import it first; destroy will not cancel the number):
 
 ```hcl
 resource "voipms_did" "office" {
-  did          = "5550001002"
-  routing      = "fwd:${voipms_forwarding.mobile.id}"
-  pop_hostname = "newyork7.voip.ms"
-  voicemail    = voipms_voicemail.main.mailbox
+  did            = "5550001002"
+  routing        = "fwd:${voipms_forwarding.mobile.description}"
+  pop_hostname   = "newyork7.voip.ms"
+  voicemail_name = voipms_voicemail.main.name
 
-  failover_busy        = "vm:${voipms_voicemail.main.mailbox}"
-  failover_noanswer    = "vm:${voipms_voicemail.main.mailbox}"
-  failover_unreachable = "vm:${voipms_voicemail.main.mailbox}"
+  failover_busy        = "vm:${voipms_voicemail.main.name}"
+  failover_noanswer    = "vm:${voipms_voicemail.main.name}"
+  failover_unreachable = "vm:${voipms_voicemail.main.name}"
 }
 
 resource "voipms_forwarding" "mobile" {
@@ -297,7 +297,7 @@ terraform {
   required_providers {
     voipms = {
       source  = "vetal-ca-org/voipms"
-      version = "~> 0.1"
+      version = "~> 0.2"
     }
   }
 }

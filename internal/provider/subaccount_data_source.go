@@ -66,7 +66,7 @@ func subaccountDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 		"allowed_codecs":         dsString("Allowed codecs."),
 		"dtmf_mode":              dsString("DTMF mode."),
 		"nat":                    dsString("NAT setting."),
-		"sip_traffic":            dsBool("Encrypted SIP traffic (TLS/SRTP) enabled."),
+		"encrypted_sip_traffic":  dsBool(encryptedSIPTrafficDescription),
 		"max_expiry":             dsInt("Maximum registration expiry in seconds."),
 		"rtp_timeout":            dsInt("RTP timeout in seconds."),
 		"rtp_hold_timeout":       dsInt("RTP hold timeout in seconds."),
