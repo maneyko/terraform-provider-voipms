@@ -32,6 +32,7 @@ type Client struct {
 	password   string
 	httpClient *http.Client
 	userAgent  string
+	cache      listCache
 }
 
 // Config is used to construct a Client.

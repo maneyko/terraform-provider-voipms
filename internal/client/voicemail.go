@@ -12,19 +12,25 @@ type voicemailsResponse struct {
 
 // GetVoicemails lists voicemail boxes. mailbox, if set, filters to one box.
 func (c *Client) GetVoicemails(ctx context.Context, mailbox string) ([]Voicemail, error) {
-	params := map[string]string{}
-	if mailbox != "" {
-		params["mailbox"] = mailbox
-	}
-	var resp voicemailsResponse
-	err := c.Call(ctx, "getVoicemails", params, &resp)
-	if err != nil {
-		if emptyResult(err) {
-			return []Voicemail{}, nil
+	load := func() ([]Voicemail, error) {
+		params := map[string]string{}
+		if mailbox != "" {
+			params["mailbox"] = mailbox
 		}
-		return nil, err
+		var resp voicemailsResponse
+		err := c.Call(ctx, "getVoicemails", params, &resp)
+		if err != nil {
+			if emptyResult(err) {
+				return []Voicemail{}, nil
+			}
+			return nil, err
+		}
+		return resp.Voicemails, nil
 	}
-	return resp.Voicemails, nil
+	if mailbox == "" {
+		return c.cachedVoicemails(load)
+	}
+	return load()
 }
 
 // GetVoicemail returns one mailbox.

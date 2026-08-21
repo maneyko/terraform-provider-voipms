@@ -14,16 +14,17 @@ Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAcc
 
 ```terraform
 resource "voipms_subaccount" "gateway" {
-  username        = "gateway"
-  password        = var.gateway_sip_password
-  description     = "Common SIP gateway"
-  protocol        = "1"
-  auth_type       = "1"
-  device_type     = "1"
-  allowed_codecs  = "ulaw;g722"
-  nat             = "no"
-  sip_traffic     = true
-  canada_routing  = "2"
+  username           = "gateway"
+  password           = var.gateway_sip_password
+  description        = "Common SIP gateway"
+  protocol           = "1"
+  auth_type          = "1"
+  device_type        = "1"
+  allowed_codecs     = "ulaw;g722"
+  nat                = "no"
+  sip_traffic        = true
+  canada_routing     = "premium"
+  allow_225_balance  = false
 }
 ```
 
@@ -37,12 +38,14 @@ resource "voipms_subaccount" "gateway" {
 
 ### Optional
 
-- `allow225` (Boolean) Allow `*225` balance check.
+- `allow_225_balance` (Boolean) Allow this sub-account to dial `*225` (or `*BAL`) to hear the current VoIP.ms account balance. If disabled, calls to that feature code from this sub-account are rejected.
+
+For a PBX or phone endpoint, leave this disabled unless users of that extension should be able to retrieve the account balance.
 - `allowed_codecs` (String) Semicolon-separated codecs (e.g. `ulaw;g722`).
 - `auth_type` (String) Authentication type from `getAuthTypes` (`1` = user/password, `2` = IP).
 - `call_pickup_behavior` (String) Call pickup behavior.
 - `callerid_number` (String) Outbound caller ID number.
-- `canada_routing` (String) Canada routing from `getRoutes` (`1` = Value, `2` = Premium).
+- `canada_routing` (String) Canada routing from `getRoutes`. Use `value` (API `1`) or `premium` (API `2`). Numeric `1`/`2` still work.
 - `default_e911` (String) Default E911 DID for this sub-account.
 - `description` (String) Label shown in the portal.
 - `device_type` (String) Device type from `getDeviceTypes` (`1` = IP PBX, `2` = ATA/softphone).
@@ -50,7 +53,7 @@ resource "voipms_subaccount" "gateway" {
 - `dtmf_mode` (String) DTMF mode from `getDTMFModes` (e.g. `auto`).
 - `enable_internal_cnam` (Boolean) Send internal Caller ID name.
 - `enable_ip_restriction` (Boolean) Restrict registrations to `ip_restriction`.
-- `enable_pop_restriction` (Boolean) Restrict this sub-account to `pop_restriction` servers.
+- `enable_pop_restriction` (Boolean) Restrict this sub-account to `pop_restriction` servers. Leave false for no POP restriction.
 - `internal_dialtime` (String) Internal ring time in seconds.
 - `internal_extension` (String) Internal extension digits.
 - `internal_voicemail` (String) Internal voicemail mailbox.
@@ -63,12 +66,16 @@ resource "voipms_subaccount" "gateway" {
 - `music_on_hold` (String) Music on hold class (see `getMusicOnHold`).
 - `nat` (String) NAT setting from `getNAT` (`yes`, `no`, `route`, …).
 - `password` (String, Sensitive) SIP password (required for user/password auth).
-- `pop_restriction` (String) Comma-separated POP ids when POP restriction is enabled.
+- `pop_restriction` (String) Comma-separated POP ids when `enable_pop_restriction` is true. When restriction is off, VoIP.ms still returns the full POP list; Terraform treats this attribute as unset so configs do not have to store that list.
 - `protocol` (String) Protocol id from `getProtocols` (`1` = SIP).
 - `record_calls` (Boolean) Record calls for this sub-account.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.
-- `sip_traffic` (Boolean) Whether encrypted SIP traffic is enabled.
+- `sip_traffic` (Boolean) VoIP.ms **Encrypted SIP Traffic** for this sub-account.
+
+`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.
+
+`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 
 ### Read-Only
 

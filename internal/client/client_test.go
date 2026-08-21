@@ -566,3 +566,73 @@ func TestFindHelpers(t *testing.T) {
 		t.Fatalf("group = %+v", grp)
 	}
 }
+
+func TestSlug(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"Kate Fizz Cell": "kate-fizz-cell",
+		"Main":           "main",
+		"  Kate  Fizz  ": "kate-fizz",
+		"":               "",
+	}
+	for in, want := range cases {
+		if got := Slug(in); got != want {
+			t.Errorf("Slug(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestCanadaRoute(t *testing.T) {
+	t.Parallel()
+	name, ok := CanadaRouteName("2")
+	if !ok || name != CanadaRoutePremium {
+		t.Errorf("CanadaRouteName(2) = %q %v", name, ok)
+	}
+	id, ok := CanadaRouteID("premium")
+	if !ok || id != "2" {
+		t.Errorf("CanadaRouteID(premium) = %q %v", id, ok)
+	}
+	if !CanadaRoutesEqual("2", "Premium") {
+		t.Error("2 should equal Premium")
+	}
+	if CanadaRoutesEqual("1", "2") {
+		t.Error("value should not equal premium")
+	}
+}
+
+func TestCanonicalRoute(t *testing.T) {
+	t.Parallel()
+	tables := RouteTables{
+		Forwardings: []Forwarding{{Forwarding: "186772", Description: "Kate Fizz Cell"}},
+		Voicemails:  []Voicemail{{Mailbox: "500601", Name: "Main"}},
+	}
+	cases := []struct {
+		in, want string
+	}{
+		{"fwd:186772", "fwd:186772"},
+		{"fwd:Kate Fizz Cell", "fwd:186772"},
+		{"fwd:kate-fizz-cell", "fwd:186772"},
+		{"vm:500601", "vm:500601"},
+		{"vm:Main", "vm:500601"},
+		{"vm:main", "vm:500601"},
+		{"account:150060_common-fs", "account:150060_common-fs"},
+		{"sys:hangup", "sys:hangup"},
+		{"none:", "none:"},
+	}
+	for _, tc := range cases {
+		got, err := CanonicalRoute(tc.in, tables)
+		if err != nil {
+			t.Errorf("CanonicalRoute(%q) error = %v", tc.in, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("CanonicalRoute(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+	if !RoutesEqual("fwd:Kate Fizz Cell", "fwd:186772", tables) {
+		t.Error("named forwarding should equal id form")
+	}
+	if _, err := CanonicalRoute("fwd:missing", tables); err == nil {
+		t.Error("expected error for unknown forwarding")
+	}
+}

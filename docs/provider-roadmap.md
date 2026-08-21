@@ -31,7 +31,7 @@ IVRs, ring groups, queues, time conditions, DISA, SIP URIs, recordings, call hun
 | `getServersInfo` | POP id → hostname (e.g. pop `73` → `newyork7.voip.ms`) |
 | `getAuthTypes`, `getProtocols`, `getDeviceTypes` | Sub-account schema enums |
 | `getAllowedCodecs`, `getDTMFModes`, `getNAT`, `getMusicOnHold`, `getLanguages` | Sub-account options |
-| `getRoutes` | Canada routing (`canada_routing`: 1=Value, 2=Premium) |
+| `getRoutes` | Canada routing (`canada_routing`: `value`/`1`, `premium`/`2`) |
 | `getVoicemailSetups` | DID vs account voicemail mode |
 
 ## Example identifiers in docs

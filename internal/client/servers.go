@@ -13,19 +13,25 @@ type serversResponse struct {
 
 // GetServersInfo lists VoIP.ms POPs. pop, if set, filters to one server_pop.
 func (c *Client) GetServersInfo(ctx context.Context, pop string) ([]Server, error) {
-	params := map[string]string{}
-	if pop != "" {
-		params["server_pop"] = pop
-	}
-	var resp serversResponse
-	err := c.Call(ctx, "getServersInfo", params, &resp)
-	if err != nil {
-		if emptyResult(err) {
-			return []Server{}, nil
+	load := func() ([]Server, error) {
+		params := map[string]string{}
+		if pop != "" {
+			params["server_pop"] = pop
 		}
-		return nil, err
+		var resp serversResponse
+		err := c.Call(ctx, "getServersInfo", params, &resp)
+		if err != nil {
+			if emptyResult(err) {
+				return []Server{}, nil
+			}
+			return nil, err
+		}
+		return resp.Servers, nil
 	}
-	return resp.Servers, nil
+	if pop == "" {
+		return c.cachedServers(load)
+	}
+	return load()
 }
 
 // GetServer returns one POP by server_pop id.

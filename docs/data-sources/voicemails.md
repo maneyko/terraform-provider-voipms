@@ -37,7 +37,7 @@ Read-Only:
 - `id` (String) Same as `mailbox`.
 - `language` (String) Prompt language.
 - `mailbox` (String) Mailbox number.
-- `name` (String) Display name.
+- `name` (String) Display name (e.g. `John`).
 - `password` (String, Sensitive) Mailbox PIN.
 - `play_instructions` (String) When to play instructions.
 - `say_callerid` (Boolean) Announce caller ID.

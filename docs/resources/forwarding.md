@@ -2,12 +2,12 @@
 page_title: "voipms_forwarding Resource - voipms"
 subcategory: ""
 description: |-
-  Manages a call-forwarding destination (setForwarding / delForwarding). Reference it from a DID as fwd:{id}.
+  Manages a call-forwarding destination (setForwarding / delForwarding). Reference it from a DID as fwd:{id} or fwd:{description}.
 ---
 
 # voipms_forwarding (Resource)
 
-Manages a call-forwarding destination (`setForwarding` / `delForwarding`). Reference it from a DID as `fwd:{id}`.
+Manages a call-forwarding destination (`setForwarding` / `delForwarding`). Reference it from a DID as `fwd:{id}` or `fwd:{description}`.
 
 
 ## Example Usage
@@ -30,14 +30,14 @@ resource "voipms_forwarding" "mobile" {
 ### Optional
 
 - `callerid_override` (String) Caller ID override when forwarding.
-- `description` (String) Description.
+- `description` (String) Description. Can be used in DID routing as `fwd:<description>` (or a slug of this value).
 - `diversion_header` (Boolean) Send a SIP Diversion header.
 - `dtmf_digits` (String) DTMF digits to send after answer.
 - `pause` (String) Pause in seconds before DTMF (0–10, steps of 0.5).
 
 ### Read-Only
 
-- `id` (String) VoIP.ms forwarding id (used in DID routing as `fwd:<id>`).
+- `id` (String) VoIP.ms forwarding id. DID routing also accepts the description: `fwd:<description>`.
 
 ## Import
 

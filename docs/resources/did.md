@@ -37,10 +37,10 @@ resource "voipms_did" "home" {
   routing              = "account:${data.voipms_subaccount.gateway.account}"
   pop_hostname         = local.my_pops.ny7
   dialtime             = 30
-  voicemail            = data.voipms_voicemail.johns_voicemail.mailbox
-  failover_busy        = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
-  failover_noanswer    = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
-  failover_unreachable = "vm:${data.voipms_voicemail.johns_voicemail.mailbox}"
+  voicemail_name       = data.voipms_voicemail.johns_voicemail.name
+  failover_busy        = "vm:${data.voipms_voicemail.johns_voicemail.name}"
+  failover_noanswer    = "vm:${data.voipms_voicemail.johns_voicemail.name}"
+  failover_unreachable = "fwd:${data.voipms_forwarding.mobile.description}"
 
   sms_enabled     = true
   webhook         = "https://example.lambda-url.us-east-1.on.aws/"
@@ -62,14 +62,14 @@ resource "voipms_did" "home" {
 - `callerid_prefix` (String) Caller ID prefix.
 - `cnam` (Boolean) Enable CNAM lookup on inbound calls.
 - `dialtime` (Number) Ring time in seconds before failover/voicemail.
-- `failover_busy` (String) Busy failover route.
-- `failover_noanswer` (String) No-answer failover route.
-- `failover_unreachable` (String) Unreachable failover route.
+- `failover_busy` (String) Busy failover route. Same `fwd:` / `vm:` name lookup as `routing`.
+- `failover_noanswer` (String) No-answer failover route. Same `fwd:` / `vm:` name lookup as `routing`.
+- `failover_unreachable` (String) Unreachable failover route. Same `fwd:` / `vm:` name lookup as `routing`.
 - `note` (String) Free-form DID note (e.g. `Home line`).
 - `pop` (Number) Point-of-presence id. Prefer `pop_hostname` for a visual value such as `newyork7.voip.ms`.
 - `pop_hostname` (String) POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Resolved to `pop` when applying.
 - `record_calls` (Boolean) Record inbound calls.
-- `routing` (String) Inbound route, e.g. `account:100001_gateway`, `fwd:1001`, `vm:101`.
+- `routing` (String) Inbound route, e.g. `account:100001_gateway`, `fwd:Kate Fizz Cell`, `vm:Main`. `fwd:` accepts a forwarding id, description, or slug; `vm:` accepts a mailbox number, display name, or slug.
 - `sms_email` (String) Email address for inbound SMS.
 - `sms_email_enabled` (Boolean) Deliver inbound SMS to `sms_email`.
 - `sms_enabled` (Boolean) Enable SMS/MMS on the DID (`setSMS`).

@@ -31,7 +31,7 @@ data "voipms_forwardings" "all" {}
 Read-Only:
 
 - `callerid_override` (String) Caller ID override.
-- `description` (String) Description.
+- `description` (String) Description (e.g. `Mobile`).
 - `diversion_header` (Boolean) SIP Diversion header enabled.
 - `dtmf_digits` (String) DTMF digits sent after answer.
 - `id` (String) Forwarding id.
