@@ -30,12 +30,12 @@ data "voipms_subaccount" "gateway" {
 
 ### Read-Only
 
-- `allow225` (Boolean) Whether `*225` is allowed.
+- `allow_225_balance` (Boolean) Whether `*225` / `*BAL` balance check is allowed.
 - `allowed_codecs` (String) Allowed codecs.
 - `auth_type` (String) Authentication type.
 - `call_pickup_behavior` (String) Call pickup behavior.
 - `callerid_number` (String) Outbound caller ID number.
-- `canada_routing` (String) Canada routing id.
+- `canada_routing` (String) Canada routing (`value` or `premium`).
 - `default_e911` (String) Default E911 DID.
 - `description` (String) Portal description.
 - `device_type` (String) Device type id.
@@ -56,10 +56,9 @@ data "voipms_subaccount" "gateway" {
 - `music_on_hold` (String) Music on hold class.
 - `nat` (String) NAT setting.
 - `password` (String, Sensitive) SIP password.
-- `pop_restriction` (String) POP restriction list.
+- `pop_restriction` (String) POP restriction list (unset when restriction is off).
 - `protocol` (String) Protocol id.
 - `record_calls` (Boolean) Whether calls are recorded.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.
-- `sip_traffic` (Boolean) Encrypted SIP traffic enabled.
-- `username` (String) Sub-account username suffix.
+- `sip_traffic` (Boolean) Encrypted SIP traffic (TLS/SRTP) enabled.

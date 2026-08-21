@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -20,6 +22,7 @@ var (
 	_ resource.Resource                = &didResource{}
 	_ resource.ResourceWithConfigure   = &didResource{}
 	_ resource.ResourceWithImportState = &didResource{}
+	_ resource.ResourceWithModifyPlan  = &didResource{}
 )
 
 func NewDIDResource() resource.Resource {
@@ -27,7 +30,10 @@ func NewDIDResource() resource.Resource {
 }
 
 type didResource struct {
-	client *client.Client
+	client     *client.Client
+	routes     client.RouteTables
+	routesOnce sync.Once
+	routesErr  error
 }
 
 type didModel struct {
@@ -97,28 +103,28 @@ func didResourceAttributes() map[string]schema.Attribute {
 				stringplanmodifier.RequiresReplace(),
 			},
 		},
-		"description":              schema.StringAttribute{MarkdownDescription: "Rate-center / city description from VoIP.ms (read-only).", Computed: true},
-		"routing":                  optStr("Inbound route, e.g. `account:100001_gateway`, `fwd:1001`, `vm:101`."),
-		"failover_busy":            optStr("Busy failover route."),
-		"failover_unreachable":     optStr("Unreachable failover route."),
-		"failover_noanswer":        optStr("No-answer failover route."),
+		"description":              schema.StringAttribute{MarkdownDescription: "Rate-center / city description from VoIP.ms (read-only).", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+		"routing":                  optStr("Inbound route, e.g. `account:100001_gateway`, `fwd:Kate Fizz Cell`, `vm:Main`. `fwd:` accepts a forwarding id, description, or slug; `vm:` accepts a mailbox number, display name, or slug."),
+		"failover_busy":            optStr("Busy failover route. Same `fwd:` / `vm:` name lookup as `routing`."),
+		"failover_unreachable":     optStr("Unreachable failover route. Same `fwd:` / `vm:` name lookup as `routing`."),
+		"failover_noanswer":        optStr("No-answer failover route. Same `fwd:` / `vm:` name lookup as `routing`."),
 		"voicemail":                optStr("Mailbox attached to the DID (`0` means none). Prefer `voicemail_name` or a `voipms_voicemail` reference."),
 		"voicemail_name":           optStr("Voicemail display name (e.g. `John`). Resolved to `voicemail` when applying."),
 		"pop":                      optIntAttr("Point-of-presence id. Prefer `pop_hostname` for a visual value such as `newyork7.voip.ms`."),
 		"pop_hostname":             optStr("POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Resolved to `pop` when applying."),
 		"dialtime":                 optIntAttr("Ring time in seconds before failover/voicemail."),
 		"cnam":                     optBoolAttr("Enable CNAM lookup on inbound calls."),
-		"e911":                     schema.BoolAttribute{MarkdownDescription: "Whether E911 is provisioned (read-only; set in the portal).", Computed: true},
+		"e911":                     schema.BoolAttribute{MarkdownDescription: "Whether E911 is provisioned (read-only; set in the portal).", Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}},
 		"callerid_prefix":          optStr("Caller ID prefix."),
 		"record_calls":             optBoolAttr("Record inbound calls."),
 		"note":                     optStr("Free-form DID note (e.g. `Home line`)."),
 		"billing_type":             optStr("`1` = per minute, `2` = flat rate."),
-		"next_billing":             schema.StringAttribute{MarkdownDescription: "Next billing date.", Computed: true},
-		"order_date":               schema.StringAttribute{MarkdownDescription: "Date the DID was ordered.", Computed: true},
+		"next_billing":             schema.StringAttribute{MarkdownDescription: "Next billing date.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+		"order_date":               schema.StringAttribute{MarkdownDescription: "Date the DID was ordered.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"voicemail_threshold":      optIntAttr("Voicemail threshold."),
-		"sms_available":            schema.BoolAttribute{MarkdownDescription: "Whether the DID can use SMS.", Computed: true},
+		"sms_available":            schema.BoolAttribute{MarkdownDescription: "Whether the DID can use SMS.", Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}},
 		"sms_enabled":              optBoolAttr("Enable SMS/MMS on the DID (`setSMS`)."),
-		"mms_available":            schema.BoolAttribute{MarkdownDescription: "Whether the DID can use MMS.", Computed: true},
+		"mms_available":            schema.BoolAttribute{MarkdownDescription: "Whether the DID can use MMS.", Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}},
 		"sms_email":                optStr("Email address for inbound SMS."),
 		"sms_email_enabled":        optBoolAttr("Deliver inbound SMS to `sms_email`."),
 		"sms_forward":              optStr("Phone number to forward SMS to."),
@@ -128,7 +134,7 @@ func didResourceAttributes() map[string]schema.Attribute {
 		"sms_url_callback_retry":   optBoolAttr("Retry the legacy URL callback on failure."),
 		"webhook":                  optStr("Modern SMS webhook URL."),
 		"webhook_enabled":          optBoolAttr("Enable the modern SMS webhook."),
-		"dialmode":                 schema.StringAttribute{MarkdownDescription: "SMS dialing mode.", Computed: true},
+		"dialmode":                 schema.StringAttribute{MarkdownDescription: "SMS dialing mode.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"sms_sipaccount":           optStr("Sub-account used to send SMS via SIP."),
 		"sms_sipaccount_enabled":   optBoolAttr("Enable SIP-account SMS sending."),
 	}
@@ -263,6 +269,9 @@ func (r *didResource) applyDID(ctx context.Context, plan *didModel) error {
 	if err := r.resolveVoicemail(ctx, plan); err != nil {
 		return err
 	}
+	if err := r.resolveRoutes(ctx, plan); err != nil {
+		return err
+	}
 	current, err := r.client.GetDID(ctx, plan.DID.ValueString())
 	if err != nil {
 		return err
@@ -321,6 +330,88 @@ func (r *didResource) resolveVoicemail(ctx context.Context, plan *didModel) erro
 
 func (r *didResource) keepOrFillVoicemailName(ctx context.Context, m *didModel) error {
 	return fillDIDVoicemailName(ctx, r.client, m)
+}
+
+func (r *didResource) routeTables(ctx context.Context) (client.RouteTables, error) {
+	if r.client == nil {
+		return client.RouteTables{}, fmt.Errorf("client not configured")
+	}
+	r.routesOnce.Do(func() {
+		fwds, err := r.client.GetForwardings(ctx, "")
+		if err != nil {
+			r.routesErr = err
+			return
+		}
+		vms, err := r.client.GetVoicemails(ctx, "")
+		if err != nil {
+			r.routesErr = err
+			return
+		}
+		r.routes = client.RouteTables{Forwardings: fwds, Voicemails: vms}
+	})
+	return r.routes, r.routesErr
+}
+
+func (r *didResource) resolveRoutes(ctx context.Context, plan *didModel) error {
+	tables, err := r.routeTables(ctx)
+	if err != nil {
+		return err
+	}
+	return resolveDIDRoutes(plan, tables)
+}
+
+func resolveDIDRoutes(plan *didModel, tables client.RouteTables) error {
+	fields := []*types.String{&plan.Routing, &plan.FailoverBusy, &plan.FailoverUnreachable, &plan.FailoverNoanswer}
+	for _, f := range fields {
+		if f.IsNull() || f.IsUnknown() || f.ValueString() == "" {
+			continue
+		}
+		canon, err := client.CanonicalRoute(f.ValueString(), tables)
+		if err != nil {
+			return err
+		}
+		*f = types.StringValue(canon)
+	}
+	return nil
+}
+
+func (r *didResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.client == nil {
+		return
+	}
+	var plan, state didModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	tables, err := r.routeTables(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to resolve DID route names", err.Error())
+		return
+	}
+	keepEquivalentRoute(&plan.Routing, state.Routing, tables)
+	keepEquivalentRoute(&plan.FailoverBusy, state.FailoverBusy, tables)
+	keepEquivalentRoute(&plan.FailoverUnreachable, state.FailoverUnreachable, tables)
+	keepEquivalentRoute(&plan.FailoverNoanswer, state.FailoverNoanswer, tables)
+	// Keep computed-only attributes from state so Set() does not mark them unknown.
+	plan.Description = state.Description
+	plan.E911 = state.E911
+	plan.NextBilling = state.NextBilling
+	plan.OrderDate = state.OrderDate
+	plan.SMSAvailable = state.SMSAvailable
+	plan.MMSAvailable = state.MMSAvailable
+	plan.Dialmode = state.Dialmode
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+func keepEquivalentRoute(plan *types.String, state types.String, tables client.RouteTables) {
+	if plan.IsNull() || plan.IsUnknown() || state.IsNull() || state.IsUnknown() {
+		return
+	}
+	if client.RoutesEqual(plan.ValueString(), state.ValueString(), tables) {
+		*plan = state
+	}
 }
 
 func fillDIDVoicemailName(ctx context.Context, c *client.Client, m *didModel) error {

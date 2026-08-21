@@ -10,11 +10,9 @@ Use this provider to read and manage objects in a [VoIP.ms](https://voip.ms) acc
 
 {{ .Description | trimspace }}
 
-{{ if .HasExample }}
-## Example Usage
+This example configures a home setup: a SIP gateway (PBX trunk), two voicemail boxes, a couple of phonebook contacts, a POP lookup by hostname, and a DID that rings the gateway then fails over to voicemail or a mobile. The DID must already exist on the account; Terraform does not order or cancel numbers.
 
-{{ tffile .ExampleFile }}
-{{ end }}
+{{ tffile "examples/complete/main.tf" }}
 
 ## Authentication
 

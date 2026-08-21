@@ -12,19 +12,25 @@ type subAccountsResponse struct {
 
 // GetSubAccounts lists sub-accounts. account may be an API id or full SIP login.
 func (c *Client) GetSubAccounts(ctx context.Context, account string) ([]SubAccount, error) {
-	params := map[string]string{}
-	if account != "" {
-		params["account"] = account
-	}
-	var resp subAccountsResponse
-	err := c.Call(ctx, "getSubAccounts", params, &resp)
-	if err != nil {
-		if emptyResult(err) {
-			return []SubAccount{}, nil
+	load := func() ([]SubAccount, error) {
+		params := map[string]string{}
+		if account != "" {
+			params["account"] = account
 		}
-		return nil, err
+		var resp subAccountsResponse
+		err := c.Call(ctx, "getSubAccounts", params, &resp)
+		if err != nil {
+			if emptyResult(err) {
+				return []SubAccount{}, nil
+			}
+			return nil, err
+		}
+		return resp.Accounts, nil
 	}
-	return resp.Accounts, nil
+	if account == "" {
+		return c.cachedSubAccounts(load)
+	}
+	return load()
 }
 
 // GetSubAccount returns one sub-account by API id, SIP login (`{main}_{username}`),

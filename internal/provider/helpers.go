@@ -106,7 +106,11 @@ func (m computedOptionalString) PlanModifyString(_ context.Context, req planmodi
 		return
 	}
 	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
-		resp.PlanValue = types.StringUnknown()
+		if req.State.Raw.IsNull() {
+			resp.PlanValue = types.StringUnknown()
+			return
+		}
+		resp.PlanValue = types.StringNull()
 		return
 	}
 	resp.PlanValue = req.StateValue

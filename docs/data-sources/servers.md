@@ -38,7 +38,7 @@ Read-Only:
 - `hostname` (String) SIP hostname (e.g. `newyork7.voip.ms`).
 - `id` (String) Same as `pop`.
 - `ip` (String) Server IP address.
-- `name` (String) Server display name.
+- `name` (String) Server display name (e.g. `New York 7`).
 - `pop` (String) Point-of-presence id (`server_pop`).
 - `recommended` (Boolean) Whether VoIP.ms marks this POP as recommended.
 - `shortname` (String) Short server name.

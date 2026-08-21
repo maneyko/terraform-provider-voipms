@@ -4,7 +4,7 @@ Terraform provider for [VoIP.ms](https://voip.ms). It talks to the public REST/J
 
 This repository follows the HashiCorp naming convention (`terraform-provider-voipms`). `master` is the default branch. See `docs/provider-roadmap.md` for API coverage.
 
-Provider source address (local / future registry):
+Published at [registry.terraform.io/providers/vetal-ca-org/voipms](https://registry.terraform.io/providers/vetal-ca-org/voipms):
 
 ```hcl
 source = "vetal-ca-org/voipms"
@@ -80,11 +80,11 @@ provider_installation {
 
 `dev_overrides` skips `terraform init` downloads for that source. Use it only while developing.
 
-## Use it from another repo (today)
+## Local development (another repo)
 
-Terraform providers are **binaries**, not Go modules. The other repo cannot `source = "git::..."` the way a Terraform module can. Until this is on the public Terraform Registry, pick one of these.
+Terraform providers are **binaries**, not Go modules. While you are changing this provider, point the other repo at a locally built binary instead of the Registry.
 
-### Same machine (fastest): `dev_overrides`
+### Same machine: `dev_overrides`
 
 In this provider repo:
 
@@ -123,7 +123,7 @@ Set `VOIPMS_USERNAME` and `VOIPMS_PASSWORD` in the environment. Allow-list the p
 
 Rebuild after provider changes (`make install`) before the next plan.
 
-### Versioned, no Registry: filesystem mirror
+### Versioned, no Registry download: filesystem mirror
 
 Installs a versioned plugin Terraform **will** download via `terraform init`:
 
@@ -153,11 +153,16 @@ Then `terraform init` and `terraform plan`. Copy the same plugin directory onto 
 
 ## Example
 
+A household-style configuration (SIP gateway, voicemail, contacts, POP lookup, DID routing) lives in [`examples/complete/main.tf`](examples/complete/main.tf) and is the example on the Terraform Registry provider page.
+
+Minimal check that credentials work:
+
 ```hcl
 terraform {
   required_providers {
     voipms = {
-      source = "vetal-ca-org/voipms"
+      source  = "vetal-ca-org/voipms"
+      version = "~> 0.1"
     }
   }
 }
@@ -264,19 +269,28 @@ make generate
 
 That runs [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs).
 
-## Publishing (Terraform Registry)
+## Releasing (Terraform Registry)
 
-A Git URL is not a valid provider source. For `terraform init` in other repos without a local plugin directory, publish signed GitHub release zips and register the provider.
+Source address is `vetal-ca-org/voipms`. After the first publish, **do not click Publish again**. A new signed GitHub Release is enough.
 
-The GitHub repository is **`vetal-ca-org/terraform-provider-voipms`**. Terraform Registry source address is `vetal-ca-org/voipms` (the `terraform-provider-` prefix is stripped).
+1. Merge to `master` through a pull request. Tests must be green.
+2. Tag the next semver. Never reuse or move an existing tag.
 
-To publish a version:
+   ```shell
+   git checkout master
+   git pull
+   git tag v0.1.1    # patch; use v0.2.0 for compatible features, v1.0.0 for breaking changes
+   git push origin v0.1.1
+   ```
 
-1. [Generate a GPG key](https://developer.hashicorp.com/terraform/registry/providers/publishing#gpg-key) and add GitHub Actions secrets `GPG_PRIVATE_KEY` and `PASSPHRASE`.
-2. Tag a release: `git tag v0.1.0 && git push origin v0.1.0`. `.github/workflows/release.yml` runs GoReleaser (zip + SHA256SUMS + GPG signature).
-3. The repository must be **public** for the [Terraform Registry](https://registry.terraform.io/publish/provider). Sign in with GitHub and publish `vetal-ca-org/terraform-provider-voipms`.
+3. GitHub Actions **Release** runs GoReleaser: platform zips, SHA256SUMS, GPG-signed checksums (`GPG_PRIVATE_KEY` / `PASSPHRASE` secrets).
+4. The Registry ingests that release automatically. Confirm the new version on [the provider page](https://registry.terraform.io/providers/vetal-ca-org/voipms).
 
-After that, the other repo only needs:
+Do not replace assets on a published release. To rotate signing keys, **add** a new public key on the `vetal-ca-org` namespace and update the Actions secrets; leave the old key so older versions still verify.
+
+Full write-up: [`docs/guides/releasing.md`](docs/guides/releasing.md) (also a Guide on the Registry after the next tagged release).
+
+In another repo:
 
 ```hcl
 terraform {
@@ -289,9 +303,7 @@ terraform {
 }
 ```
 
-`terraform init` downloads the binary. No `dev_overrides` required.
-
-Until the Registry listing exists, use `make install-plugin` or `dev_overrides` as above.
+`terraform init` downloads the binary. Use `dev_overrides` or `make install-plugin` only while developing this provider.
 
 ## License
 

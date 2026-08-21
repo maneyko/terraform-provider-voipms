@@ -40,16 +40,16 @@ func (r *forwardingResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *forwardingResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a call-forwarding destination (`setForwarding` / `delForwarding`). Reference it from a DID as `fwd:{id}`.",
+		MarkdownDescription: "Manages a call-forwarding destination (`setForwarding` / `delForwarding`). Reference it from a DID as `fwd:{id}` or `fwd:{description}`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "VoIP.ms forwarding id (used in DID routing as `fwd:<id>`).",
+				MarkdownDescription: "VoIP.ms forwarding id. DID routing also accepts the description: `fwd:<description>`.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"phone_number":      schema.StringAttribute{MarkdownDescription: "Destination number.", Required: true},
 			"callerid_override": optStr("Caller ID override when forwarding."),
-			"description":       optStr("Description."),
+			"description":       optStr("Description. Can be used in DID routing as `fwd:<description>` (or a slug of this value)."),
 			"dtmf_digits":       optStr("DTMF digits to send after answer."),
 			"pause":             optStr("Pause in seconds before DTMF (0–10, steps of 0.5)."),
 			"diversion_header":  optBoolAttr("Send a SIP Diversion header."),

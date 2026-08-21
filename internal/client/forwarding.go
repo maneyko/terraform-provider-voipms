@@ -12,19 +12,25 @@ type forwardingsResponse struct {
 
 // GetForwardings lists call forwardings. id, if set, filters to one forwarding code.
 func (c *Client) GetForwardings(ctx context.Context, id string) ([]Forwarding, error) {
-	params := map[string]string{}
-	if id != "" {
-		params["forwarding"] = id
-	}
-	var resp forwardingsResponse
-	err := c.Call(ctx, "getForwardings", params, &resp)
-	if err != nil {
-		if emptyResult(err) {
-			return []Forwarding{}, nil
+	load := func() ([]Forwarding, error) {
+		params := map[string]string{}
+		if id != "" {
+			params["forwarding"] = id
 		}
-		return nil, err
+		var resp forwardingsResponse
+		err := c.Call(ctx, "getForwardings", params, &resp)
+		if err != nil {
+			if emptyResult(err) {
+				return []Forwarding{}, nil
+			}
+			return nil, err
+		}
+		return resp.Forwardings, nil
 	}
-	return resp.Forwardings, nil
+	if id == "" {
+		return c.cachedForwardings(load)
+	}
+	return load()
 }
 
 // GetForwarding returns one forwarding by id.

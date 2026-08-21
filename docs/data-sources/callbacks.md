@@ -32,7 +32,7 @@ Read-Only:
 
 - `callerid_number` (String) Caller ID presented to the callback number.
 - `delay_before` (Number) Delay before prompt, in seconds.
-- `description` (String) Description.
+- `description` (String) Description (e.g. `Mobile`).
 - `digit_timeout` (Number) Digit timeout in seconds.
 - `id` (String) Callback id.
 - `number` (String) Callback destination number.

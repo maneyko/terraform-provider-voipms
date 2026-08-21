@@ -15,9 +15,11 @@ import (
 )
 
 var (
-	_ resource.Resource                = &subaccountResource{}
-	_ resource.ResourceWithConfigure   = &subaccountResource{}
-	_ resource.ResourceWithImportState = &subaccountResource{}
+	_ resource.Resource                 = &subaccountResource{}
+	_ resource.ResourceWithConfigure    = &subaccountResource{}
+	_ resource.ResourceWithImportState  = &subaccountResource{}
+	_ resource.ResourceWithModifyPlan   = &subaccountResource{}
+	_ resource.ResourceWithUpgradeState = &subaccountResource{}
 )
 
 func NewSubaccountResource() resource.Resource {
@@ -56,7 +58,7 @@ type subaccountModel struct {
 	POPRestriction       types.String `tfsdk:"pop_restriction"`
 	EnablePOPRestriction types.Bool   `tfsdk:"enable_pop_restriction"`
 	RecordCalls          types.Bool   `tfsdk:"record_calls"`
-	Allow225             types.Bool   `tfsdk:"allow225"`
+	Allow225Balance      types.Bool   `tfsdk:"allow_225_balance"`
 	InternalExtension    types.String `tfsdk:"internal_extension"`
 	InternalVoicemail    types.String `tfsdk:"internal_voicemail"`
 	InternalDialtime     types.String `tfsdk:"internal_dialtime"`
@@ -133,7 +135,7 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			PlanModifiers:       []planmodifier.String{optString()},
 		},
 		"canada_routing": schema.StringAttribute{
-			MarkdownDescription: "Canada routing from `getRoutes` (`1` = Value, `2` = Premium).",
+			MarkdownDescription: "Canada routing from `getRoutes`. Use `value` (API `1`) or `premium` (API `2`). Numeric `1`/`2` still work.",
 			Optional:            true,
 			Computed:            true,
 			PlanModifiers:       []planmodifier.String{optString()},
@@ -181,10 +183,12 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			PlanModifiers:       []planmodifier.String{optString()},
 		},
 		"sip_traffic": schema.BoolAttribute{
-			MarkdownDescription: "Whether encrypted SIP traffic is enabled.",
-			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{optBool()},
+			MarkdownDescription: "VoIP.ms **Encrypted SIP Traffic** for this sub-account.\n\n" +
+				"`false`: normal, unencrypted SIP signaling/media — typically SIP over UDP or TCP and plain RTP. This is the usual setting for standard Asterisk/FreeSWITCH/ATA configurations.\n\n" +
+				"`true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.",
+			Optional:      true,
+			Computed:      true,
+			PlanModifiers: []planmodifier.Bool{optBool()},
 		},
 		"max_expiry": schema.Int64Attribute{
 			MarkdownDescription: "Maximum SIP registration expiry in seconds.",
@@ -217,13 +221,14 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			PlanModifiers:       []planmodifier.Bool{optBool()},
 		},
 		"pop_restriction": schema.StringAttribute{
-			MarkdownDescription: "Comma-separated POP ids when POP restriction is enabled.",
-			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.String{optString()},
+			MarkdownDescription: "Comma-separated POP ids when `enable_pop_restriction` is true. " +
+				"When restriction is off, VoIP.ms still returns the full POP list; Terraform treats this attribute as unset so configs do not have to store that list.",
+			Optional:      true,
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{optString()},
 		},
 		"enable_pop_restriction": schema.BoolAttribute{
-			MarkdownDescription: "Restrict this sub-account to `pop_restriction` servers.",
+			MarkdownDescription: "Restrict this sub-account to `pop_restriction` servers. Leave false for no POP restriction.",
 			Optional:            true,
 			Computed:            true,
 			PlanModifiers:       []planmodifier.Bool{optBool()},
@@ -234,11 +239,13 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			Computed:            true,
 			PlanModifiers:       []planmodifier.Bool{optBool()},
 		},
-		"allow225": schema.BoolAttribute{
-			MarkdownDescription: "Allow `*225` balance check.",
-			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{optBool()},
+		"allow_225_balance": schema.BoolAttribute{
+			MarkdownDescription: "Allow this sub-account to dial `*225` (or `*BAL`) to hear the current VoIP.ms account balance. " +
+				"If disabled, calls to that feature code from this sub-account are rejected.\n\n" +
+				"For a PBX or phone endpoint, leave this disabled unless users of that extension should be able to retrieve the account balance.",
+			Optional:      true,
+			Computed:      true,
+			PlanModifiers: []planmodifier.Bool{optBool()},
 		},
 		"internal_extension": schema.StringAttribute{
 			MarkdownDescription: "Internal extension digits.",
@@ -291,6 +298,7 @@ func (r *subaccountResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *subaccountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		MarkdownDescription: "Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAccount`). " +
 			"Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones.",
 		Attributes: subaccountResourceAttributes(),
@@ -407,7 +415,11 @@ func subaccountWriteParams(m subaccountModel) map[string]string {
 	setString(params, "ip", m.IP)
 	setString(params, "device_type", m.DeviceType)
 	setString(params, "callerid_number", m.CallerIDNumber)
-	setString(params, "canada_routing", m.CanadaRouting)
+	if id, ok := client.CanadaRouteID(m.CanadaRouting.ValueString()); ok && !m.CanadaRouting.IsNull() && !m.CanadaRouting.IsUnknown() {
+		params["canada_routing"] = id
+	} else {
+		setString(params, "canada_routing", m.CanadaRouting)
+	}
 	setString(params, "lock_international", m.LockInternational)
 	setString(params, "international_route", m.InternationalRoute)
 	setString(params, "music_on_hold", m.MusicOnHold)
@@ -424,7 +436,7 @@ func subaccountWriteParams(m subaccountModel) map[string]string {
 	setString(params, "pop_restriction", m.POPRestriction)
 	setBool01(params, "enable_pop_restriction", m.EnablePOPRestriction)
 	setBool01(params, "record_calls", m.RecordCalls)
-	setBool01(params, "allow225", m.Allow225)
+	setBool01(params, "allow225", m.Allow225Balance)
 	setString(params, "internal_extension", m.InternalExtension)
 	setString(params, "internal_voicemail", m.InternalVoicemail)
 	setString(params, "internal_dialtime", m.InternalDialtime)
@@ -446,7 +458,11 @@ func flattenSubaccount(src *client.SubAccount, dst *subaccountModel) {
 	dst.IP = strVal(src.IP)
 	dst.DeviceType = strVal(src.DeviceType)
 	dst.CallerIDNumber = strVal(src.CallerIDNumber)
-	dst.CanadaRouting = strVal(src.CanadaRouting)
+	if name, ok := client.CanadaRouteName(src.CanadaRouting.String()); ok {
+		dst.CanadaRouting = types.StringValue(name)
+	} else {
+		dst.CanadaRouting = strVal(src.CanadaRouting)
+	}
 	dst.LockInternational = strVal(src.LockInternational)
 	dst.InternationalRoute = strVal(src.InternationalRoute)
 	dst.MusicOnHold = strVal(src.MusicOnHold)
@@ -460,10 +476,14 @@ func flattenSubaccount(src *client.SubAccount, dst *subaccountModel) {
 	dst.RTPHoldTimeout = intVal(src.RTPHoldTimeout)
 	dst.IPRestriction = strVal(src.IPRestriction)
 	dst.EnableIPRestriction = boolVal(src.EnableIPRestriction)
-	dst.POPRestriction = strVal(src.POPRestriction)
 	dst.EnablePOPRestriction = boolVal(src.EnablePOPRestriction)
+	if src.EnablePOPRestriction.Bool() {
+		dst.POPRestriction = strVal(src.POPRestriction)
+	} else {
+		dst.POPRestriction = types.StringNull()
+	}
 	dst.RecordCalls = boolVal(src.RecordCalls)
-	dst.Allow225 = boolVal(src.Allow225)
+	dst.Allow225Balance = boolVal(src.Allow225)
 	dst.InternalExtension = strVal(src.InternalExtension)
 	dst.InternalVoicemail = strVal(src.InternalVoicemail)
 	dst.InternalDialtime = strVal(src.InternalDialtime)
@@ -477,4 +497,34 @@ func flattenSubaccountCopy(src *client.SubAccount) subaccountModel {
 	var m subaccountModel
 	flattenSubaccount(src, &m)
 	return m
+}
+
+func (r *subaccountResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan subaccountModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !plan.EnablePOPRestriction.IsUnknown() && !plan.EnablePOPRestriction.ValueBool() {
+		plan.POPRestriction = types.StringNull()
+	}
+
+	if !req.State.Raw.IsNull() {
+		var state subaccountModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !plan.CanadaRouting.IsNull() && !plan.CanadaRouting.IsUnknown() &&
+			!state.CanadaRouting.IsNull() && !state.CanadaRouting.IsUnknown() &&
+			client.CanadaRoutesEqual(plan.CanadaRouting.ValueString(), state.CanadaRouting.ValueString()) {
+			plan.CanadaRouting = state.CanadaRouting
+		}
+	}
+
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }

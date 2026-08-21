@@ -29,38 +29,58 @@ func matchUnique[T any](items []T, query, kind string, keys func(*T) []string) (
 	return matches[0], nil
 }
 
-// MatchVoicemail finds a mailbox by number or display name.
+func keysWithSlug(keys ...string) []string {
+	out := make([]string, 0, len(keys)*2)
+	seen := map[string]struct{}{}
+	add := func(k string) {
+		if k == "" {
+			return
+		}
+		if _, ok := seen[k]; ok {
+			return
+		}
+		seen[k] = struct{}{}
+		out = append(out, k)
+	}
+	for _, k := range keys {
+		add(k)
+		add(Slug(k))
+	}
+	return out
+}
+
+// MatchVoicemail finds a mailbox by number, display name, or name slug (`main`).
 func MatchVoicemail(items []Voicemail, query string) (*Voicemail, error) {
 	return matchUnique(items, query, "voicemail", func(v *Voicemail) []string {
-		return []string{v.Mailbox.String(), v.Name.String()}
+		return keysWithSlug(v.Mailbox.String(), v.Name.String())
 	})
 }
 
-// MatchForwarding finds a forwarding by id or description.
+// MatchForwarding finds a forwarding by id, description, or description slug (`kate-fizz-cell`).
 func MatchForwarding(items []Forwarding, query string) (*Forwarding, error) {
 	return matchUnique(items, query, "forwarding", func(f *Forwarding) []string {
-		return []string{f.Forwarding.String(), f.Description.String()}
+		return keysWithSlug(f.Forwarding.String(), f.Description.String())
 	})
 }
 
 // MatchCallback finds a callback by id or description.
 func MatchCallback(items []Callback, query string) (*Callback, error) {
 	return matchUnique(items, query, "callback", func(c *Callback) []string {
-		return []string{c.Callback.String(), c.Description.String()}
+		return keysWithSlug(c.Callback.String(), c.Description.String())
 	})
 }
 
 // MatchPhonebookGroup finds a group by id or name.
 func MatchPhonebookGroup(items []PhonebookGroup, query string) (*PhonebookGroup, error) {
 	return matchUnique(items, query, "phonebook group", func(g *PhonebookGroup) []string {
-		return []string{g.PhonebookGroup.String(), g.Name.String()}
+		return keysWithSlug(g.PhonebookGroup.String(), g.Name.String())
 	})
 }
 
 // MatchPhonebookEntry finds an entry by id or contact name.
 func MatchPhonebookEntry(items []PhonebookEntry, query string) (*PhonebookEntry, error) {
 	return matchUnique(items, query, "phonebook entry", func(p *PhonebookEntry) []string {
-		return []string{p.Phonebook.String(), p.Name.String()}
+		return keysWithSlug(p.Phonebook.String(), p.Name.String())
 	})
 }
 
