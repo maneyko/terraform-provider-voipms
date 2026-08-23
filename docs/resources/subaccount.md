@@ -2,12 +2,12 @@
 page_title: "voipms_subaccount Resource - voipms"
 subcategory: ""
 description: |-
-  Manages a VoIP.ms sub-account (createSubAccount / setSubAccount / delSubAccount). Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones.
+  Manages a VoIP.ms sub-account (createSubAccount / setSubAccount / delSubAccount). Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones. Link a DID with routing = voipms_subaccount.this.route. Look up an existing trunk with data.voipms_subaccount.
 ---
 
 # voipms_subaccount (Resource)
 
-Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAccount`). Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones.
+Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAccount`). Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones. Link a DID with `routing = voipms_subaccount.this.route`. Look up an existing trunk with `data.voipms_subaccount`.
 
 
 ## Example Usage
@@ -59,7 +59,7 @@ For a PBX or phone endpoint, leave this disabled unless users of that extension 
 `true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 - `internal_dialtime` (String) Internal ring time in seconds.
 - `internal_extension` (String) Internal extension digits.
-- `internal_voicemail` (String) Internal voicemail mailbox.
+- `internal_voicemail` (String) Internal voicemail mailbox. Set from `voipms_voicemail.this.id` or `data.voipms_voicemail.this.id`.
 - `international_route` (String) International route from `getRoutes`.
 - `ip` (String) Allowed IP or FQDN when `auth_type` is IP authentication.
 - `ip_restriction` (String) Comma-separated IP allow-list when IP restriction is enabled.
@@ -77,8 +77,9 @@ For a PBX or phone endpoint, leave this disabled unless users of that extension 
 
 ### Read-Only
 
-- `account` (String) Full SIP login (`{main}_{username}`, e.g. `100001_gateway`).
-- `id` (String) Numeric VoIP.ms sub-account id.
+- `account` (String) Full SIP login (`{main}_{username}`, e.g. `100001_gateway`). Computed. Prefer `route` when linking a DID.
+- `id` (String) Numeric VoIP.ms sub-account id, assigned on create. Not used in DID routing (VoIP.ms routes by SIP login). Do not paste this into a DID; use `route`.
+- `route` (String) DID routing value (`account:{account}`). Use this for `voipms_did` `routing` / failover. VoIP.ms expects the SIP login, not the numeric `id`.
 
 ## Import
 

@@ -13,12 +13,6 @@ Manages routing, failover, voicemail, POP, and SMS settings for a DID that is al
 ## Example Usage
 
 ```terraform
-locals {
-  my_pops = {
-    ny7 = "newyork7.voip.ms"
-  }
-}
-
 data "voipms_voicemail" "johns_voicemail" {
   name = "John"
 }
@@ -31,16 +25,20 @@ data "voipms_subaccount" "gateway" {
   username = "gateway"
 }
 
+data "voipms_server" "nyc" {
+  hostname = "newyork7.voip.ms"
+}
+
 resource "voipms_did" "home" {
   did                  = "5550001001"
   note                 = "Home line"
-  routing              = "account:${data.voipms_subaccount.gateway.account}"
-  pop_hostname         = local.my_pops.ny7
+  routing              = data.voipms_subaccount.gateway.route
+  pop_hostname         = data.voipms_server.nyc.hostname
   dialtime             = 30
-  voicemail_name       = data.voipms_voicemail.johns_voicemail.name
-  failover_busy        = "vm:${data.voipms_voicemail.johns_voicemail.name}"
-  failover_noanswer    = "vm:${data.voipms_voicemail.johns_voicemail.name}"
-  failover_unreachable = "fwd:${data.voipms_forwarding.mobile.description}"
+  voicemail            = data.voipms_voicemail.johns_voicemail.id
+  failover_busy        = data.voipms_voicemail.johns_voicemail.route
+  failover_noanswer    = data.voipms_voicemail.johns_voicemail.route
+  failover_unreachable = data.voipms_forwarding.mobile.route
 
   sms_enabled     = true
   webhook         = "https://example.lambda-url.us-east-1.on.aws/"
@@ -62,14 +60,14 @@ resource "voipms_did" "home" {
 - `callerid_prefix` (String) Caller ID prefix.
 - `cnam` (Boolean) Enable CNAM lookup on inbound calls.
 - `dialtime` (Number) Ring time in seconds before failover/voicemail.
-- `failover_busy` (String) Busy failover route. Same `fwd:` / `vm:` name lookup as `routing`.
-- `failover_noanswer` (String) No-answer failover route. Same `fwd:` / `vm:` name lookup as `routing`.
-- `failover_unreachable` (String) Unreachable failover route. Same `fwd:` / `vm:` name lookup as `routing`.
+- `failover_busy` (String) Busy failover route. Same `route` reference as `routing`.
+- `failover_noanswer` (String) No-answer failover route. Same `route` reference as `routing`.
+- `failover_unreachable` (String) Unreachable failover route. Same `route` reference as `routing`.
 - `note` (String) Free-form DID note (e.g. `Home line`).
-- `pop` (Number) Point-of-presence id. Prefer `pop_hostname` for a visual value such as `newyork7.voip.ms`.
-- `pop_hostname` (String) POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Resolved to `pop` when applying.
+- `pop` (Number) Point-of-presence id. Prefer `data.voipms_server` (look up by `hostname` or `name`) rather than a raw POP number.
+- `pop_hostname` (String) POP as a SIP hostname (`newyork7.voip.ms`) or display name (`New York 7`). Prefer `data.voipms_server.this.hostname` after a hostname lookup. Resolved to `pop` when applying.
 - `record_calls` (Boolean) Record inbound calls.
-- `routing` (String) Inbound route, e.g. `account:100001_gateway`, `fwd:Kate Fizz Cell`, `vm:Main`. `fwd:` accepts a forwarding id, description, or slug; `vm:` accepts a mailbox number, display name, or slug.
+- `routing` (String) Inbound route. Set from a resource or data source `route` (`voipms_subaccount.this.route`, `voipms_voicemail.this.route`, `voipms_forwarding.this.route`) or a system action such as `sys:hangup`. Do not paste a raw API id or a display name (`vm:Alex`).
 - `sms_email` (String) Email address for inbound SMS.
 - `sms_email_enabled` (Boolean) Deliver inbound SMS to `sms_email`.
 - `sms_enabled` (Boolean) Enable SMS/MMS on the DID (`setSMS`).
@@ -80,8 +78,8 @@ resource "voipms_did" "home" {
 - `sms_url_callback` (String) Legacy SMS URL callback (supports `{TO}`, `{FROM}`, `{MESSAGE}`).
 - `sms_url_callback_enabled` (Boolean) Enable the legacy URL callback.
 - `sms_url_callback_retry` (Boolean) Retry the legacy URL callback on failure.
-- `voicemail` (String) Mailbox attached to the DID (`0` means none). Prefer `voicemail_name` or a `voipms_voicemail` reference.
-- `voicemail_name` (String) Voicemail display name (e.g. `John`). Resolved to `voicemail` when applying.
+- `voicemail` (String) Mailbox attached to the DID (`0` means none). Set from `voipms_voicemail.this.id` or `data.voipms_voicemail.this.id`. Do not paste a raw mailbox number.
+- `voicemail_name` (String) Voicemail display name. Prefer `voicemail = voipms_voicemail.this.id` so the mailbox is a resource or data source. Resolved to `voicemail` when applying if set.
 - `voicemail_threshold` (Number) Voicemail threshold.
 - `webhook` (String) Modern SMS webhook URL.
 - `webhook_enabled` (Boolean) Enable the modern SMS webhook.

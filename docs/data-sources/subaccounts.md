@@ -57,7 +57,7 @@ Read-Only:
 - `id` (String) Numeric VoIP.ms sub-account id, full SIP login, or username suffix.
 - `internal_dialtime` (String) Internal ring time.
 - `internal_extension` (String) Internal extension.
-- `internal_voicemail` (String) Internal voicemail mailbox.
+- `internal_voicemail` (String) Internal voicemail mailbox. Set from a `voipms_voicemail` `id`.
 - `international_route` (String) International route id.
 - `ip` (String) IP/FQDN used for IP authentication.
 - `ip_restriction` (String) IP restriction list.
@@ -70,6 +70,7 @@ Read-Only:
 - `pop_restriction` (String) POP restriction list (unset when restriction is off).
 - `protocol` (String) Protocol id.
 - `record_calls` (Boolean) Whether calls are recorded.
+- `route` (String) DID routing value (`account:{account}`). Use this for `voipms_did` `routing` / failover.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.
 - `username` (String) Sub-account username suffix.

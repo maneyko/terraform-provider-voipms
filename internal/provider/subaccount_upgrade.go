@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/vetal-ca-org/terraform-provider-voipms/internal/client"
 )
 
 type subaccountModelV0 struct {
@@ -99,6 +101,7 @@ func (r *subaccountResource) UpgradeState(_ context.Context) map[int64]resource.
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, subaccountModel{
 					ID:                   prior.ID,
+					Route:                accountRouteValue(prior.Account),
 					Account:              prior.Account,
 					Username:             prior.Username,
 					Description:          prior.Description,
@@ -148,6 +151,7 @@ func (r *subaccountResource) UpgradeState(_ context.Context) map[int64]resource.
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, subaccountModel{
 					ID:                   prior.ID,
+					Route:                accountRouteValue(prior.Account),
 					Account:              prior.Account,
 					Username:             prior.Username,
 					Description:          prior.Description,
@@ -200,6 +204,7 @@ func subaccountResourceAttributesV0() map[string]schema.Attribute {
 	attrs := copySchemaAttrs(subaccountResourceAttributes())
 	delete(attrs, "allow_225_balance")
 	delete(attrs, "encrypted_sip_traffic")
+	delete(attrs, "route")
 	attrs["allow225"] = priorOptBool()
 	attrs["sip_traffic"] = priorOptBool()
 	return attrs
@@ -208,8 +213,16 @@ func subaccountResourceAttributesV0() map[string]schema.Attribute {
 func subaccountResourceAttributesV1() map[string]schema.Attribute {
 	attrs := copySchemaAttrs(subaccountResourceAttributes())
 	delete(attrs, "encrypted_sip_traffic")
+	delete(attrs, "route")
 	attrs["sip_traffic"] = priorOptBool()
 	return attrs
+}
+
+func accountRouteValue(account types.String) types.String {
+	if account.IsNull() || account.IsUnknown() || account.ValueString() == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(client.AccountRoute(account.ValueString()))
 }
 
 func copySchemaAttrs(src map[string]schema.Attribute) map[string]schema.Attribute {

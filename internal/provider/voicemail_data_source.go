@@ -24,7 +24,8 @@ func voicemailDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 		name.Optional = true
 	}
 	return map[string]schema.Attribute{
-		"id":                            schema.StringAttribute{MarkdownDescription: "Same as `mailbox`.", Computed: true},
+		"id":                            schema.StringAttribute{MarkdownDescription: "VoIP.ms identifier (same as `mailbox`). Use this to attach the box to a DID: `voicemail = data.voipms_voicemail.this.id`.", Computed: true},
+		"route":                         dsString("DID routing value (`vm:{mailbox}`). Use this for `voipms_did` `routing` / failover."),
 		"mailbox":                       mailbox,
 		"name":                          name,
 		"password":                      dsSensitiveString("Mailbox PIN."),
@@ -47,8 +48,9 @@ func (d *voicemailDataSource) Metadata(_ context.Context, req datasource.Metadat
 }
 func (d *voicemailDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a voicemail box by mailbox number or display `name` (`getVoicemails`).",
-		Attributes:          voicemailDataSourceAttributes(true),
+		MarkdownDescription: "Reads a voicemail box by mailbox number or display `name` (`getVoicemails`). " +
+			"Look up by `name`, then link with `id` or `route` — do not paste a raw mailbox into a DID.",
+		Attributes: voicemailDataSourceAttributes(true),
 	}
 }
 func (d *voicemailDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

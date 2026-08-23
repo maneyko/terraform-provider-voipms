@@ -65,8 +65,8 @@ func (r *phonebookEntryResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"speed_dial": optStr("Speed-dial code."),
 			"callerid":   optStr("Caller ID name override."),
 			"note":       optStr("Note."),
-			"group":      optStr("Phonebook group id. Prefer `group_name` or a `voipms_phonebook_group` reference."),
-			"group_name": optStr("Phonebook group name (e.g. `Spam`). Resolved to `group` when applying."),
+			"group":      optStr("Phonebook group id. Set from `voipms_phonebook_group.this.id` or `data.voipms_phonebook_group.this.id`. Do not paste a raw group id."),
+			"group_name": optStr("Phonebook group name. Prefer `group = voipms_phonebook_group.this.id` so the group is a resource or data source. Resolved to `group` when applying if set."),
 		},
 	}
 }

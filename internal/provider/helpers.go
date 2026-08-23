@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vetal-ca-org/terraform-provider-voipms/internal/client"
@@ -157,6 +159,14 @@ func (m computedOptionalInt64) PlanModifyInt64(_ context.Context, req planmodifi
 func optString() planmodifier.String { return computedOptionalString{} }
 func optBool() planmodifier.Bool     { return computedOptionalBool{} }
 func optInt() planmodifier.Int64     { return computedOptionalInt64{} }
+
+func computedRouteAttr(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+	}
+}
 
 func configuredString(v types.String) string {
 	if v.IsNull() || v.IsUnknown() {

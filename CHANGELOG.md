@@ -10,7 +10,6 @@ All notable changes to this provider will be documented in this file.
 - `voipms_subaccount.allow225` renamed to `allow_225_balance` (state upgraded from schema v0).
 - `voipms_subaccount.sip_traffic` renamed to `encrypted_sip_traffic` (state upgraded from schema v1). The VoIP.ms API field remains `sip_traffic`.
 - `voipms_subaccount.pop_restriction` is unset in state when `enable_pop_restriction` is false (VoIP.ms still returns the full POP list).
-- DID `routing` / failover `fwd:` and `vm:` accept a forwarding description or voicemail name (and slugs) as well as numeric ids.
 - Unfiltered `getServersInfo` / `getForwardings` / `getVoicemails` / `getSubAccounts` responses are cached for the Terraform run so DID plans do not trip the VoIP.ms per-minute API limit.
 
 ### Fixed
@@ -29,3 +28,13 @@ All notable changes to this provider will be documented in this file.
 - Unit tests for inventory client methods and provider registration.
 - `make install` / `make install-plugin` for local use from another Terraform repo.
 - GitHub repository `vetal-ca-org/terraform-provider-voipms` (HashiCorp provider naming).
+
+## 0.2.2 - 2026-08-23
+
+### Added
+
+- Computed `route` on `voipms_subaccount` (`account:{sip}`), `voipms_voicemail` (`vm:{mailbox}`), and `voipms_forwarding` (`fwd:{id}`), including the matching data sources.
+
+### Changed
+
+- DID `routing` / failover use computed `route` from a resource or data source. Attach a mailbox with `voicemail = voipms_voicemail.this.id`. Name-based `fwd:` / `vm:` strings still resolve at apply for compatibility, but configs should not paste raw API ids or display names.

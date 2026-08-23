@@ -26,6 +26,7 @@ type forwardingResource struct{ client *client.Client }
 
 type forwardingModel struct {
 	ID               types.String `tfsdk:"id"`
+	Route            types.String `tfsdk:"route"`
 	PhoneNumber      types.String `tfsdk:"phone_number"`
 	CallerIDOverride types.String `tfsdk:"callerid_override"`
 	Description      types.String `tfsdk:"description"`
@@ -40,16 +41,19 @@ func (r *forwardingResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *forwardingResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a call-forwarding destination (`setForwarding` / `delForwarding`). Reference it from a DID as `fwd:{id}` or `fwd:{description}`.",
+		MarkdownDescription: "Manages a call-forwarding destination (`setForwarding` / `delForwarding`). " +
+			"The forwarding id is assigned by VoIP.ms. Link a DID with `routing = voipms_forwarding.this.route`. " +
+			"Look up an existing destination with `data.voipms_forwarding` (by `description`) and use that object's `route`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "VoIP.ms forwarding id. DID routing also accepts the description: `fwd:<description>`.",
+				MarkdownDescription: "VoIP.ms forwarding id, assigned on create. Computed. Do not paste this into a DID; use `route` (or look up the object with `data.voipms_forwarding`).",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"route":             computedRouteAttr("DID routing value (`fwd:{id}`). Use this for `voipms_did` `routing` / failover, not `fwd:` plus a description."),
 			"phone_number":      schema.StringAttribute{MarkdownDescription: "Destination number.", Required: true},
 			"callerid_override": optStr("Caller ID override when forwarding."),
-			"description":       optStr("Description. Can be used in DID routing as `fwd:<description>` (or a slug of this value)."),
+			"description":       optStr("Label shown in the portal. Used to create or look up this destination, not to link other resources."),
 			"dtmf_digits":       optStr("DTMF digits to send after answer."),
 			"pause":             optStr("Pause in seconds before DTMF (0–10, steps of 0.5)."),
 			"diversion_header":  optBoolAttr("Send a SIP Diversion header."),
@@ -160,6 +164,7 @@ func forwardingWriteParams(m forwardingModel) map[string]string {
 
 func flattenForwarding(src *client.Forwarding, dst *forwardingModel) {
 	dst.ID = strVal(src.Forwarding)
+	dst.Route = types.StringValue(client.ForwardingRoute(src.Forwarding.String()))
 	dst.PhoneNumber = strVal(src.PhoneNumber)
 	dst.CallerIDOverride = strVal(src.CallerIDOverride)
 	dst.Description = strVal(src.Description)

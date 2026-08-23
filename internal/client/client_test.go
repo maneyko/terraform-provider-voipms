@@ -600,6 +600,19 @@ func TestCanadaRoute(t *testing.T) {
 	}
 }
 
+func TestRouteFormat(t *testing.T) {
+	t.Parallel()
+	if got := AccountRoute("150060_gateway"); got != "account:150060_gateway" {
+		t.Errorf("AccountRoute = %q", got)
+	}
+	if got := ForwardingRoute("186772"); got != "fwd:186772" {
+		t.Errorf("ForwardingRoute = %q", got)
+	}
+	if got := VoicemailRoute("101"); got != "vm:101" {
+		t.Errorf("VoicemailRoute = %q", got)
+	}
+}
+
 func TestCanonicalRoute(t *testing.T) {
 	t.Parallel()
 	tables := RouteTables{

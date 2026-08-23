@@ -20,7 +20,7 @@ resource "voipms_phonebook_group" "spam" {
 resource "voipms_phonebook_entry" "blocked_prefix" {
   name       = "Blocked prefix"
   number     = "999"
-  group_name = voipms_phonebook_group.spam.name
+  group = voipms_phonebook_group.spam.id
 }
 ```
 
@@ -36,8 +36,8 @@ resource "voipms_phonebook_entry" "blocked_prefix" {
 ### Optional
 
 - `callerid` (String) Caller ID name override.
-- `group` (String) Phonebook group id. Prefer `group_name` or a `voipms_phonebook_group` reference.
-- `group_name` (String) Phonebook group name (e.g. `Spam`). Resolved to `group` when applying.
+- `group` (String) Phonebook group id. Set from `voipms_phonebook_group.this.id` or `data.voipms_phonebook_group.this.id`. Do not paste a raw group id.
+- `group_name` (String) Phonebook group name. Prefer `group = voipms_phonebook_group.this.id` so the group is a resource or data source. Resolved to `group` when applying if set.
 - `note` (String) Note.
 - `speed_dial` (String) Speed-dial code.
 
