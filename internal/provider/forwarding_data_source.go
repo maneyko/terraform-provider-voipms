@@ -25,6 +25,7 @@ func forwardingDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	}
 	return map[string]schema.Attribute{
 		"id":                id,
+		"route":             dsString("DID routing value (`fwd:{id}`). Use this for `voipms_did` `routing` / failover."),
 		"phone_number":      dsString("Destination number."),
 		"callerid_override": dsString("Caller ID override."),
 		"description":       description,
@@ -39,8 +40,9 @@ func (d *forwardingDataSource) Metadata(_ context.Context, req datasource.Metada
 }
 func (d *forwardingDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a call forwarding by id or `description` (`getForwardings`).",
-		Attributes:          forwardingDataSourceAttributes(true),
+		MarkdownDescription: "Reads a call forwarding by id or `description` (`getForwardings`). " +
+			"Look up by `description`, then link with `route` — do not paste a raw forwarding id into a DID.",
+		Attributes: forwardingDataSourceAttributes(true),
 	}
 }
 func (d *forwardingDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     voipms = {
       source  = "vetal-ca-org/voipms"
-      version = "~> 0.2"
+      version = "~> 0.2.2"
     }
   }
 }
@@ -24,15 +24,16 @@ variable "voicemail_pin" {
   description = "Shared mailbox PIN for the example voicemail boxes."
 }
 
-# Named DID routes. VoIP.ms routing is type:target (account / fwd / vm / sys / none).
-# account: is the full SIP login; fwd: and vm: match description or mailbox name.
+# DID routes come from resource (or data source) `route` attributes.
+# Those values are API type:id strings; do not build them from display names
+# and do not paste raw forwarding/mailbox ids into this file.
 locals {
-  route_gateway     = "account:${voipms_subaccount.gateway.account}"
-  route_vm_alex     = "vm:${voipms_voicemail.alex.name}"
-  route_alex_mobile = "fwd:${voipms_forwarding.alex_mobile.description}"
+  route_gateway     = voipms_subaccount.gateway.route
+  route_vm_alex     = voipms_voicemail.alex.route
+  route_alex_mobile = voipms_forwarding.alex_mobile.route
 }
 
-# POP by hostname (also accepts display name, e.g. "New York 7").
+# POP looked up by hostname; the data source is the source of the id.
 data "voipms_server" "nyc" {
   hostname = "newyork7.voip.ms"
 }
@@ -50,6 +51,8 @@ resource "voipms_subaccount" "gateway" {
   canada_routing        = "premium"
 }
 
+# mailbox is the extension people dial (you choose it). id is computed and
+# equals mailbox — that is what other resources reference.
 resource "voipms_voicemail" "alex" {
   mailbox        = "101"
   name           = "Alex"
@@ -88,14 +91,14 @@ resource "voipms_phonebook_group" "family" {
 resource "voipms_phonebook_entry" "alex_mobile" {
   name       = "Alex mobile"
   number     = "5550002001"
-  group_name = voipms_phonebook_group.family.name
+  group      = voipms_phonebook_group.family.id
   speed_dial = "21"
 }
 
 resource "voipms_phonebook_entry" "jordan_mobile" {
   name       = "Jordan mobile"
   number     = "5550002002"
-  group_name = voipms_phonebook_group.family.name
+  group      = voipms_phonebook_group.family.id
   speed_dial = "22"
 }
 
@@ -104,11 +107,11 @@ resource "voipms_phonebook_entry" "jordan_mobile" {
 resource "voipms_did" "home" {
   did            = "5550001001"
   note           = "Home line"
-  routing        = local.route_gateway
-  pop_hostname   = data.voipms_server.nyc.hostname
-  dialtime       = 30
-  cnam           = true
-  voicemail_name = voipms_voicemail.alex.name
+  routing      = local.route_gateway
+  pop_hostname = data.voipms_server.nyc.hostname
+  dialtime     = 30
+  cnam         = true
+  voicemail    = voipms_voicemail.alex.id
 
   failover_busy        = local.route_vm_alex
   failover_noanswer    = local.route_vm_alex

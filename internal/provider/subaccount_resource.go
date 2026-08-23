@@ -37,6 +37,7 @@ type subaccountResource struct {
 
 type subaccountModel struct {
 	ID                   types.String `tfsdk:"id"`
+	Route                types.String `tfsdk:"route"`
 	Account              types.String `tfsdk:"account"`
 	Username             types.String `tfsdk:"username"`
 	Description          types.String `tfsdk:"description"`
@@ -76,14 +77,15 @@ type subaccountModel struct {
 func subaccountResourceAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"id": schema.StringAttribute{
-			MarkdownDescription: "Numeric VoIP.ms sub-account id.",
+			MarkdownDescription: "Numeric VoIP.ms sub-account id, assigned on create. Not used in DID routing (VoIP.ms routes by SIP login). Do not paste this into a DID; use `route`.",
 			Computed:            true,
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
 			},
 		},
+		"route": computedRouteAttr("DID routing value (`account:{account}`). Use this for `voipms_did` `routing` / failover. VoIP.ms expects the SIP login, not the numeric `id`."),
 		"account": schema.StringAttribute{
-			MarkdownDescription: "Full SIP login (`{main}_{username}`, e.g. `100001_gateway`).",
+			MarkdownDescription: "Full SIP login (`{main}_{username}`, e.g. `100001_gateway`). Computed. Prefer `route` when linking a DID.",
 			Computed:            true,
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
@@ -257,7 +259,7 @@ func subaccountResourceAttributes() map[string]schema.Attribute {
 			PlanModifiers:       []planmodifier.String{optString()},
 		},
 		"internal_voicemail": schema.StringAttribute{
-			MarkdownDescription: "Internal voicemail mailbox.",
+			MarkdownDescription: "Internal voicemail mailbox. Set from `voipms_voicemail.this.id` or `data.voipms_voicemail.this.id`.",
 			Optional:            true,
 			Computed:            true,
 			PlanModifiers:       []planmodifier.String{optString()},
@@ -303,7 +305,8 @@ func (r *subaccountResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Version: 2,
 		MarkdownDescription: "Manages a VoIP.ms sub-account (`createSubAccount` / `setSubAccount` / `delSubAccount`). " +
-			"Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones.",
+			"Use this for SIP trunks (for example a FreeSWITCH gateway) and softphones. " +
+			"Link a DID with `routing = voipms_subaccount.this.route`. Look up an existing trunk with `data.voipms_subaccount`.",
 		Attributes: subaccountResourceAttributes(),
 	}
 }
@@ -452,6 +455,7 @@ func subaccountWriteParams(m subaccountModel) map[string]string {
 
 func flattenSubaccount(src *client.SubAccount, dst *subaccountModel) {
 	dst.ID = strVal(src.ID)
+	dst.Route = types.StringValue(client.AccountRoute(src.Account.String()))
 	dst.Account = strVal(src.Account)
 	dst.Username = strVal(src.Username)
 	dst.Description = strVal(src.Description)
@@ -514,6 +518,9 @@ func (r *subaccountResource) ModifyPlan(ctx context.Context, req resource.Modify
 
 	if !plan.EnablePOPRestriction.IsUnknown() && !plan.EnablePOPRestriction.ValueBool() {
 		plan.POPRestriction = types.StringNull()
+	}
+	if !plan.Account.IsNull() && !plan.Account.IsUnknown() && plan.Account.ValueString() != "" {
+		plan.Route = types.StringValue(client.AccountRoute(plan.Account.ValueString()))
 	}
 
 	if !req.State.Raw.IsNull() {

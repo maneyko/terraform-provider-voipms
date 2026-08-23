@@ -2,12 +2,12 @@
 page_title: "voipms_voicemail Resource - voipms"
 subcategory: ""
 description: |-
-  Manages a voicemail box (createVoicemail / setVoicemail / delVoicemail).
+  Manages a voicemail box (createVoicemail / setVoicemail / delVoicemail). Link a DID with voicemail = voipms_voicemail.this.id or routing = voipms_voicemail.this.route. Look up an existing box with data.voipms_voicemail (by name or mailbox) and use that object's id / route.
 ---
 
 # voipms_voicemail (Resource)
 
-Manages a voicemail box (`createVoicemail` / `setVoicemail` / `delVoicemail`).
+Manages a voicemail box (`createVoicemail` / `setVoicemail` / `delVoicemail`). Link a DID with `voicemail = voipms_voicemail.this.id` or `routing = voipms_voicemail.this.route`. Look up an existing box with `data.voipms_voicemail` (by `name` or `mailbox`) and use that object's `id` / `route`.
 
 
 ## Example Usage
@@ -31,8 +31,8 @@ resource "voipms_voicemail" "main" {
 
 ### Required
 
-- `mailbox` (String) Mailbox number (digits). Changing this forces a new resource.
-- `name` (String) Display name.
+- `mailbox` (String) Mailbox number people dial. You choose it; VoIP.ms does not assign it. This is also the API identifier. Changing this forces a new resource. Link other objects with `id` or `route`, not a mailbox typed as a literal.
+- `name` (String) Display name. Used to create or look up this box, not to link other resources.
 - `password` (String, Sensitive) Mailbox PIN.
 
 ### Optional
@@ -51,7 +51,8 @@ resource "voipms_voicemail" "main" {
 
 ### Read-Only
 
-- `id` (String) Same as `mailbox`.
+- `id` (String) VoIP.ms identifier (same as `mailbox`). Computed. Attach this mailbox to a DID with `voicemail = voipms_voicemail.this.id` (or `data.voipms_voicemail.this.id`). Do not paste a raw mailbox number.
+- `route` (String) DID routing value (`vm:{mailbox}`). Use this for `voipms_did` `routing` / failover, not `vm:` plus a display name.
 
 ## Import
 

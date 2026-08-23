@@ -18,6 +18,7 @@ var (
 	_ resource.Resource                = &voicemailResource{}
 	_ resource.ResourceWithConfigure   = &voicemailResource{}
 	_ resource.ResourceWithImportState = &voicemailResource{}
+	_ resource.ResourceWithModifyPlan  = &voicemailResource{}
 )
 
 func NewVoicemailResource() resource.Resource { return &voicemailResource{} }
@@ -26,6 +27,7 @@ type voicemailResource struct{ client *client.Client }
 
 type voicemailModel struct {
 	ID                          types.String `tfsdk:"id"`
+	Route                       types.String `tfsdk:"route"`
 	Mailbox                     types.String `tfsdk:"mailbox"`
 	Name                        types.String `tfsdk:"name"`
 	Password                    types.String `tfsdk:"password"`
@@ -48,19 +50,22 @@ func (r *voicemailResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *voicemailResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a voicemail box (`createVoicemail` / `setVoicemail` / `delVoicemail`).",
+		MarkdownDescription: "Manages a voicemail box (`createVoicemail` / `setVoicemail` / `delVoicemail`). " +
+			"Link a DID with `voicemail = voipms_voicemail.this.id` or `routing = voipms_voicemail.this.route`. " +
+			"Look up an existing box with `data.voipms_voicemail` (by `name` or `mailbox`) and use that object's `id` / `route`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Same as `mailbox`.",
+				MarkdownDescription: "VoIP.ms identifier (same as `mailbox`). Computed. Attach this mailbox to a DID with `voicemail = voipms_voicemail.this.id` (or `data.voipms_voicemail.this.id`). Do not paste a raw mailbox number.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"route": computedRouteAttr("DID routing value (`vm:{mailbox}`). Use this for `voipms_did` `routing` / failover, not `vm:` plus a display name."),
 			"mailbox": schema.StringAttribute{
-				MarkdownDescription: "Mailbox number (digits). Changing this forces a new resource.",
+				MarkdownDescription: "Mailbox number people dial. You choose it; VoIP.ms does not assign it. This is also the API identifier. Changing this forces a new resource. Link other objects with `id` or `route`, not a mailbox typed as a literal.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"name":                          schema.StringAttribute{MarkdownDescription: "Display name.", Required: true},
+			"name":                          schema.StringAttribute{MarkdownDescription: "Display name. Used to create or look up this box, not to link other resources.", Required: true},
 			"password":                      schema.StringAttribute{MarkdownDescription: "Mailbox PIN.", Required: true, Sensitive: true},
 			"skip_password":                 optBoolAttr("Skip the PIN prompt when checking voicemail from a trusted DID."),
 			"email":                         optStr("Notification email; comma-separated for multiple addresses."),
@@ -182,8 +187,25 @@ func voicemailWriteParams(m voicemailModel) map[string]string {
 	return params
 }
 
+func (r *voicemailResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan voicemailModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !plan.Mailbox.IsNull() && !plan.Mailbox.IsUnknown() && plan.Mailbox.ValueString() != "" {
+		plan.ID = types.StringValue(plan.Mailbox.ValueString())
+		plan.Route = types.StringValue(client.VoicemailRoute(plan.Mailbox.ValueString()))
+	}
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
 func flattenVoicemail(src *client.Voicemail, dst *voicemailModel) {
 	dst.ID = strVal(src.Mailbox)
+	dst.Route = types.StringValue(client.VoicemailRoute(src.Mailbox.String()))
 	dst.Mailbox = strVal(src.Mailbox)
 	dst.Name = strVal(src.Name)
 	dst.Password = strVal(src.Password)

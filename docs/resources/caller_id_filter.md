@@ -29,13 +29,13 @@ resource "voipms_caller_id_filter" "blocked_prefix" {
 
 - `callerid` (String) Caller ID pattern (`X` matches any digit).
 - `did` (String) DID this rule applies to, or `all`.
-- `routing` (String) Route for matched calls, e.g. `sys:hangup`.
+- `routing` (String) Route for matched calls. Use a resource or data source `route` (`voipms_voicemail.this.route`, `voipms_forwarding.this.route`) or a system action such as `sys:hangup`.
 
 ### Optional
 
-- `failover_busy` (String) Busy failover route.
-- `failover_noanswer` (String) No-answer failover route.
-- `failover_unreachable` (String) Unreachable failover route.
+- `failover_busy` (String) Busy failover route. Same `route` reference as `routing`.
+- `failover_noanswer` (String) No-answer failover route. Same `route` reference as `routing`.
+- `failover_unreachable` (String) Unreachable failover route. Same `route` reference as `routing`.
 - `note` (String) Note.
 
 ### Read-Only

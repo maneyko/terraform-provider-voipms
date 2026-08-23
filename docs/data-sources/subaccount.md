@@ -2,12 +2,12 @@
 page_title: "voipms_subaccount Data Source - voipms"
 subcategory: ""
 description: |-
-  Reads a single VoIP.ms sub-account by id, account, or username (getSubAccounts).
+  Reads a single VoIP.ms sub-account by id, account, or username (getSubAccounts). Look up by username, then link with route — do not paste a raw SIP login into a DID.
 ---
 
 # voipms_subaccount (Data Source)
 
-Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`).
+Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`). Look up by `username`, then link with `route` — do not paste a raw SIP login into a DID.
 
 
 ## Example Usage
@@ -51,7 +51,7 @@ data "voipms_subaccount" "gateway" {
 `true`: VoIP.ms requires encrypted calling for the sub-account: SIP over TLS for signaling and SRTP for audio. Devices that still send UDP/TCP SIP or ordinary RTP can be rejected, commonly with SIP error 488.
 - `internal_dialtime` (String) Internal ring time.
 - `internal_extension` (String) Internal extension.
-- `internal_voicemail` (String) Internal voicemail mailbox.
+- `internal_voicemail` (String) Internal voicemail mailbox. Set from a `voipms_voicemail` `id`.
 - `international_route` (String) International route id.
 - `ip` (String) IP/FQDN used for IP authentication.
 - `ip_restriction` (String) IP restriction list.
@@ -64,5 +64,6 @@ data "voipms_subaccount" "gateway" {
 - `pop_restriction` (String) POP restriction list (unset when restriction is off).
 - `protocol` (String) Protocol id.
 - `record_calls` (Boolean) Whether calls are recorded.
+- `route` (String) DID routing value (`account:{account}`). Use this for `voipms_did` `routing` / failover.
 - `rtp_hold_timeout` (Number) RTP hold timeout in seconds.
 - `rtp_timeout` (Number) RTP timeout in seconds.

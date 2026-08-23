@@ -2,12 +2,12 @@
 page_title: "voipms_voicemail Data Source - voipms"
 subcategory: ""
 description: |-
-  Reads a voicemail box by mailbox number or display name (getVoicemails).
+  Reads a voicemail box by mailbox number or display name (getVoicemails). Look up by name, then link with id or route — do not paste a raw mailbox into a DID.
 ---
 
 # voipms_voicemail (Data Source)
 
-Reads a voicemail box by mailbox number or display `name` (`getVoicemails`).
+Reads a voicemail box by mailbox number or display `name` (`getVoicemails`). Look up by `name`, then link with `id` or `route` — do not paste a raw mailbox into a DID.
 
 
 ## Example Usage
@@ -33,10 +33,11 @@ data "voipms_voicemail" "johns_voicemail" {
 - `delete_message` (Boolean) Delete after emailing.
 - `email` (String) Notification email.
 - `email_attachment_format` (String) Email attachment format.
-- `id` (String) Same as `mailbox`.
+- `id` (String) VoIP.ms identifier (same as `mailbox`). Use this to attach the box to a DID: `voicemail = data.voipms_voicemail.this.id`.
 - `language` (String) Prompt language.
 - `password` (String, Sensitive) Mailbox PIN.
 - `play_instructions` (String) When to play instructions.
+- `route` (String) DID routing value (`vm:{mailbox}`). Use this for `voipms_did` `routing` / failover.
 - `say_callerid` (Boolean) Announce caller ID.
 - `say_time` (Boolean) Announce message time.
 - `skip_password` (Boolean) Skip PIN prompt.

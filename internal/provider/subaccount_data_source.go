@@ -49,6 +49,7 @@ func subaccountDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 	}
 	return map[string]schema.Attribute{
 		"id":                     id,
+		"route":                  dsString("DID routing value (`account:{account}`). Use this for `voipms_did` `routing` / failover."),
 		"account":                account,
 		"username":               username,
 		"description":            dsString("Portal description."),
@@ -77,7 +78,7 @@ func subaccountDataSourceAttributes(lookup bool) map[string]schema.Attribute {
 		"record_calls":           dsBool("Whether calls are recorded."),
 		"allow_225_balance":      dsBool("Whether `*225` / `*BAL` balance check is allowed."),
 		"internal_extension":     dsString("Internal extension."),
-		"internal_voicemail":     dsString("Internal voicemail mailbox."),
+		"internal_voicemail":     dsString("Internal voicemail mailbox. Set from a `voipms_voicemail` `id`."),
 		"internal_dialtime":      dsString("Internal ring time."),
 		"enable_internal_cnam":   dsBool("Whether internal CNAM is enabled."),
 		"dialing_mode":           dsString("Dialing mode."),
@@ -108,8 +109,9 @@ func (d *subaccountDataSource) Metadata(_ context.Context, req datasource.Metada
 
 func (d *subaccountDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`).",
-		Attributes:          subaccountDataSourceAttributes(true),
+		MarkdownDescription: "Reads a single VoIP.ms sub-account by `id`, `account`, or `username` (`getSubAccounts`). " +
+			"Look up by `username`, then link with `route` — do not paste a raw SIP login into a DID.",
+		Attributes: subaccountDataSourceAttributes(true),
 	}
 }
 

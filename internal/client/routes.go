@@ -42,6 +42,23 @@ func CanadaRoutesEqual(a, b string) bool {
 	return oka && okb && ia == ib
 }
 
+// VoIP.ms DID routing prefixes. The target after the colon is the API id
+// (mailbox, forwarding id) or the SIP login for account: routes.
+const (
+	RouteKindAccount = "account"
+	RouteKindFwd     = "fwd"
+	RouteKindVM      = "vm"
+)
+
+// AccountRoute is the DID routing value for a sub-account SIP login.
+func AccountRoute(account string) string { return RouteKindAccount + ":" + account }
+
+// ForwardingRoute is the DID routing value for a forwarding id.
+func ForwardingRoute(id string) string { return RouteKindFwd + ":" + id }
+
+// VoicemailRoute is the DID routing value for a mailbox id.
+func VoicemailRoute(mailbox string) string { return RouteKindVM + ":" + mailbox }
+
 // RouteTables is the account data needed to resolve named DID routes.
 type RouteTables struct {
 	Forwardings []Forwarding

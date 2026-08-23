@@ -2,12 +2,12 @@
 page_title: "voipms_forwarding Data Source - voipms"
 subcategory: ""
 description: |-
-  Reads a call forwarding by id or description (getForwardings).
+  Reads a call forwarding by id or description (getForwardings). Look up by description, then link with route — do not paste a raw forwarding id into a DID.
 ---
 
 # voipms_forwarding (Data Source)
 
-Reads a call forwarding by id or `description` (`getForwardings`).
+Reads a call forwarding by id or `description` (`getForwardings`). Look up by `description`, then link with `route` — do not paste a raw forwarding id into a DID.
 
 
 ## Example Usage
@@ -34,3 +34,4 @@ data "voipms_forwarding" "mobile" {
 - `dtmf_digits` (String) DTMF digits sent after answer.
 - `pause` (String) Pause before DTMF.
 - `phone_number` (String) Destination number.
+- `route` (String) DID routing value (`fwd:{id}`). Use this for `voipms_did` `routing` / failover.

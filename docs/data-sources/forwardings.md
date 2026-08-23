@@ -37,3 +37,4 @@ Read-Only:
 - `id` (String) Forwarding id.
 - `pause` (String) Pause before DTMF.
 - `phone_number` (String) Destination number.
+- `route` (String) DID routing value (`fwd:{id}`). Use this for `voipms_did` `routing` / failover.
