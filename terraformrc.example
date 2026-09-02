@@ -7,7 +7,7 @@
 
 provider_installation {
   dev_overrides {
-    "vetal-ca-org/voipms" = "/REPLACE_ME/go/bin"
+    "maneyko/voipms" = "/REPLACE_ME/go/bin"
   }
 
   direct {}

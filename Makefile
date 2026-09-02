@@ -2,7 +2,7 @@ HOSTNAME := terraform-provider-voipms
 VERSION ?= 0.0.1-dev
 OS_ARCH := $(shell go env GOOS)_$(shell go env GOARCH)
 GOBIN := $(shell go env GOPATH)/bin
-PLUGIN_MIRROR := $(HOME)/.terraform.d/plugins/registry.terraform.io/vetal-ca-org/voipms/$(VERSION)/$(OS_ARCH)
+PLUGIN_MIRROR := $(HOME)/.terraform.d/plugins/registry.terraform.io/maneyko/voipms/$(VERSION)/$(OS_ARCH)
 
 default: fmt test
 

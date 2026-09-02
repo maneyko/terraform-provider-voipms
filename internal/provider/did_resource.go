@@ -347,7 +347,12 @@ func (r *didResource) routeTables(ctx context.Context) (client.RouteTables, erro
 			r.routesErr = err
 			return
 		}
-		r.routes = client.RouteTables{Forwardings: fwds, Voicemails: vms}
+		groups, err := r.client.GetRingGroups(ctx, "")
+		if err != nil {
+			r.routesErr = err
+			return
+		}
+		r.routes = client.RouteTables{Forwardings: fwds, Voicemails: vms, RingGroups: groups}
 	})
 	return r.routes, r.routesErr
 }

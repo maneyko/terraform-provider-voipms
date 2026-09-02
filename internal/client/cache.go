@@ -10,10 +10,12 @@ type listCache struct {
 	forwardings  []Forwarding
 	voicemails   []Voicemail
 	subaccounts  []SubAccount
+	ringGroups   []RingGroup
 	haveServers  bool
 	haveFwds     bool
 	haveVMs      bool
 	haveAccounts bool
+	haveGroups   bool
 }
 
 func (c *Client) cachedServers(load func() ([]Server, error)) ([]Server, error) {
@@ -73,5 +75,20 @@ func (c *Client) cachedSubAccounts(load func() ([]SubAccount, error)) ([]SubAcco
 	}
 	c.cache.subaccounts = items
 	c.cache.haveAccounts = true
+	return items, nil
+}
+
+func (c *Client) cachedRingGroups(load func() ([]RingGroup, error)) ([]RingGroup, error) {
+	c.cache.mu.Lock()
+	defer c.cache.mu.Unlock()
+	if c.cache.haveGroups {
+		return c.cache.ringGroups, nil
+	}
+	items, err := load()
+	if err != nil {
+		return nil, err
+	}
+	c.cache.ringGroups = items
+	c.cache.haveGroups = true
 	return items, nil
 }

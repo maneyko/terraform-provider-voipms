@@ -63,6 +63,13 @@ func MatchForwarding(items []Forwarding, query string) (*Forwarding, error) {
 	})
 }
 
+// MatchRingGroup finds a ring group by id, name, or name slug (`sales-line`).
+func MatchRingGroup(items []RingGroup, query string) (*RingGroup, error) {
+	return matchUnique(items, query, "ring group", func(g *RingGroup) []string {
+		return keysWithSlug(g.RingGroup.String(), g.Name.String())
+	})
+}
+
 // MatchCallback finds a callback by id or description.
 func MatchCallback(items []Callback, query string) (*Callback, error) {
 	return matchUnique(items, query, "callback", func(c *Callback) []string {

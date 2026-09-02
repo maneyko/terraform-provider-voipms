@@ -2,12 +2,26 @@
 
 Terraform provider for [VoIP.ms](https://voip.ms). It talks to the public REST/JSON API so account objects (DIDs, subaccounts, routing, SMS, and so on) can be managed as Terraform configuration instead of clicks in the portal.
 
-This repository follows the HashiCorp naming convention (`terraform-provider-voipms`). `master` is the default branch. See `docs/provider-roadmap.md` for API coverage.
+This repository follows the HashiCorp naming convention (`terraform-provider-voipms`). `main` is the default branch. See `docs/provider-roadmap.md` for API coverage.
 
-Published at [registry.terraform.io/providers/vetal-ca-org/voipms](https://registry.terraform.io/providers/vetal-ca-org/voipms):
+## This is a fork
+
+Forked from [vetal-ca-org/terraform-provider-voipms](https://github.com/vetal-ca-org/terraform-provider-voipms) (MPL-2.0). Divergence from upstream:
+
+- **`voipms_ring_group`** resource and data sources. Upstream has none, so a DID routed at `grp:` could not be managed.
+- **Complete `SetParams()` round trips.** `setVoicemail` and `setSubAccount` replace the whole record. Upstream's `Voicemail.SetParams` omitted the six `transcription_*` fields and `SubAccount.SetParams` omitted `parking_lot`, `tfcarrier`, `internal_extension_location`, and `transcription_start_delay`, so updating one attribute reset the others. Covered by `internal/client/models_test.go`.
+
+The Go module path is still `github.com/vetal-ca-org/...` on purpose: renaming it would touch every import and conflict on every upstream merge. Only the Terraform provider address changes, to `maneyko/voipms`.
+
+Not published to the Terraform Registry. Install it as a filesystem mirror:
+
+```sh
+make install-plugin           # ~/.terraform.d/plugins/registry.terraform.io/maneyko/voipms/0.0.1-dev/<os_arch>
+```
 
 ```hcl
-source = "vetal-ca-org/voipms"
+source  = "maneyko/voipms"
+version = "0.0.1-dev"
 ```
 
 ## What works today
@@ -25,9 +39,10 @@ Objects listed in `docs/provider-roadmap.md` are covered: a **resource** to crea
 | Resource / data / list | `voipms_caller_id_filter` / `voipms_caller_id_filters` | `getCallerIDFiltering` / `setCallerIDFiltering` / `delCallerIDFiltering` | Spam / CID rules |
 | Resource / data / list | `voipms_phonebook_entry` / `voipms_phonebook_entries` | `getPhonebook` / `setPhonebook` / `delPhonebook` | Phonebook entries |
 | Resource / data / list | `voipms_phonebook_group` / `voipms_phonebook_groups` | `getPhonebookGroups` / `setPhonebookGroup` / `delPhonebookGroup` | Phonebook groups |
+| Resource / data / list | `voipms_ring_group` / `voipms_ring_groups` | `getRingGroups` / `setRingGroup` / `delRingGroup` | Ring groups (`grp:` targets) |
 | Data / list | `voipms_server` / `voipms_servers` | `getServersInfo` | POP id / hostname / name (e.g. `newyork7.voip.ms`) |
 
-IVRs, ring groups, queues, time conditions, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
+IVRs, queues, time conditions, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
 
 ## How it fits together
 

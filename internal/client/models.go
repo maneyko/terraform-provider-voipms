@@ -38,6 +38,9 @@ type SubAccount struct {
 	DefaultE911               FlexString `json:"default_e911"`
 	CallPickupBehavior        FlexString `json:"call_pickup_behavior"`
 	InternalExtensionLocation FlexString `json:"internal_extension_location"`
+	ParkingLot                FlexString `json:"parking_lot"`
+	TFCarrier                 FlexString `json:"tfcarrier"`
+	TranscriptionStartDelay   FlexString `json:"transcription_start_delay"`
 }
 
 func (s SubAccount) SetParams() map[string]string {
@@ -74,6 +77,11 @@ func (s SubAccount) SetParams() map[string]string {
 		"dialing_mode":           s.DialingMode.String(),
 		"default_e911":           s.DefaultE911.String(),
 		"call_pickup_behavior":   s.CallPickupBehavior.String(),
+
+		"internal_extension_location": s.InternalExtensionLocation.String(),
+		"parking_lot":                 s.ParkingLot.String(),
+		"tfcarrier":                   s.TFCarrier.String(),
+		"transcription_start_delay":   s.TranscriptionStartDelay.String(),
 	}
 }
 
@@ -190,54 +198,75 @@ type Voicemail struct {
 	Language                    FlexString `json:"language"`
 	EmailAttachmentFormat       FlexString `json:"email_attachment_format"`
 	UnavailableMessageRecording FlexString `json:"unavailable_message_recording"`
+	Client                      FlexString `json:"client"`
+	Transcription               FlexString `json:"transcription"`
+	TranscriptionLocale         FlexString `json:"transcription_locale"`
+	TranscriptionRedaction      FlexString `json:"transcription_redaction"`
+	TranscriptionSummary        FlexString `json:"transcription_summary"`
+	TranscriptionSentiment      FlexString `json:"transcription_sentiment"`
+	TranscriptionFormat         FlexString `json:"transcription_format"`
 }
 
 func (v Voicemail) SetParams() map[string]string {
-	skip := v.SkipPassword.String()
-	if v.SkipPassword.Bool() {
-		skip = "yes"
-	} else if skip == "0" {
-		skip = "no"
-	}
-	attach := v.AttachMessage.String()
-	if attach == "1" {
-		attach = "yes"
-	} else if attach == "0" {
-		attach = "no"
-	}
-	del := v.DeleteMessage.String()
-	if del == "1" {
-		del = "yes"
-	} else if del == "0" {
-		del = "no"
-	}
-	sayTime := v.SayTime.String()
-	if sayTime == "1" {
-		sayTime = "yes"
-	} else if sayTime == "0" {
-		sayTime = "no"
-	}
-	sayCID := v.SayCallerID.String()
-	if sayCID == "1" {
-		sayCID = "yes"
-	} else if sayCID == "0" {
-		sayCID = "no"
-	}
-	return map[string]string{
+	params := map[string]string{
 		"mailbox":                       v.Mailbox.String(),
 		"name":                          v.Name.String(),
 		"password":                      v.Password.String(),
-		"skip_password":                 skip,
+		"skip_password":                 yesNo(v.SkipPassword),
 		"email":                         v.Email.String(),
-		"attach_message":                attach,
-		"delete_message":                del,
-		"say_time":                      sayTime,
+		"attach_message":                yesNo(v.AttachMessage),
+		"delete_message":                yesNo(v.DeleteMessage),
+		"say_time":                      yesNo(v.SayTime),
 		"timezone":                      v.Timezone.String(),
-		"say_callerid":                  sayCID,
+		"say_callerid":                  yesNo(v.SayCallerID),
 		"play_instructions":             v.PlayInstructions.String(),
 		"language":                      v.Language.String(),
 		"email_attachment_format":       v.EmailAttachmentFormat.String(),
 		"unavailable_message_recording": v.UnavailableMessageRecording.String(),
+
+		"transcription":           yesNo(v.Transcription),
+		"transcription_locale":    v.TranscriptionLocale.String(),
+		"transcription_redaction": yesNo(v.TranscriptionRedaction),
+		"transcription_summary":   yesNo(v.TranscriptionSummary),
+		"transcription_sentiment": yesNo(v.TranscriptionSentiment),
+		"transcription_format":    v.TranscriptionFormat.String(),
+	}
+	// Reseller-only. Sending client=0 on a non-reseller account is rejected.
+	if id := v.Client.String(); id != "" && id != "0" {
+		params["client"] = id
+	}
+	return params
+}
+
+// yesNo renders a VoIP.ms boolean for a set* call. getVoicemails answers with
+// 1/0 or Y/N depending on the field; every setVoicemail flag wants yes/no.
+func yesNo(v FlexString) string {
+	if v.Bool() {
+		return "yes"
+	}
+	return "no"
+}
+
+// RingGroup is a ring group from getRingGroups.
+type RingGroup struct {
+	RingGroup          FlexString `json:"ring_group"`
+	Name               FlexString `json:"name"`
+	Members            FlexString `json:"members"`
+	Voicemail          FlexString `json:"voicemail"`
+	CallerAnnouncement FlexString `json:"caller_announcement"`
+	MusicOnHold        FlexString `json:"music_on_hold"`
+	Language           FlexString `json:"language"`
+}
+
+func (g RingGroup) SetParams() map[string]string {
+	return map[string]string{
+		"ring_group":          g.RingGroup.String(),
+		"name":                g.Name.String(),
+		"members":             g.Members.String(),
+		"voicemail":           g.Voicemail.String(),
+		"caller_announcement": g.CallerAnnouncement.String(),
+		"music_on_hold":       g.MusicOnHold.String(),
+		"language":            g.Language.String(),
 	}
 }
 
