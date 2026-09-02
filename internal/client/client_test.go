@@ -218,8 +218,8 @@ func TestGetSubAccountByLogin(t *testing.T) {
 		if r.URL.Query().Get("method") != "getSubAccounts" {
 			t.Errorf("method = %q", r.URL.Query().Get("method"))
 		}
-		if r.URL.Query().Get("account") != "100001_gateway" {
-			t.Errorf("account = %q", r.URL.Query().Get("account"))
+		if got := r.URL.Query().Get("account"); got != "" {
+			t.Errorf("account filter = %q, want unfiltered", got)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": "success",
@@ -248,22 +248,16 @@ func TestGetSubAccountByNumericID(t *testing.T) {
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		account := r.URL.Query().Get("account")
-		switch account {
-		case "2001":
-			// VoIP.ms rejects numeric id filters.
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "no_subaccount"})
-		case "":
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"status": "success",
-				"accounts": []map[string]any{
-					{"id": "2001", "account": "100001_gateway", "username": "gateway"},
-					{"id": "2002", "account": "100001_other", "username": "other"},
-				},
-			})
-		default:
-			t.Errorf("unexpected account filter %q", account)
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "no_subaccount"})
+		if account != "" {
+			t.Errorf("account filter = %q, want unfiltered", account)
 		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "success",
+			"accounts": []map[string]any{
+				{"id": "2001", "account": "100001_gateway", "username": "gateway"},
+				{"id": "2002", "account": "100001_other", "username": "other"},
+			},
+		})
 	})
 
 	got, err := c.GetSubAccount(context.Background(), "2001")
@@ -273,8 +267,10 @@ func TestGetSubAccountByNumericID(t *testing.T) {
 	if got.ID.String() != "2001" || got.Username.String() != "gateway" {
 		t.Errorf("got id=%s username=%s", got.ID, got.Username)
 	}
-	if calls != 2 {
-		t.Errorf("calls = %d, want 2 (filtered miss + full list)", calls)
+	// Used to cost two requests: a filtered miss, then the full list. VoIP.ms
+	// rejects numeric id filters, so the filtered call was always wasted.
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1 (one cached list)", calls)
 	}
 }
 
@@ -294,8 +290,8 @@ func TestGetDIDsInfoMixedTypes(t *testing.T) {
 	t.Parallel()
 
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("did") != "5550001001" {
-			t.Errorf("did = %q", r.URL.Query().Get("did"))
+		if got := r.URL.Query().Get("did"); got != "" {
+			t.Errorf("did filter = %q, want unfiltered", got)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": "success",
@@ -365,8 +361,8 @@ func TestGetVoicemail(t *testing.T) {
 	t.Parallel()
 
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("mailbox") != "101" {
-			t.Errorf("mailbox = %q", r.URL.Query().Get("mailbox"))
+		if got := r.URL.Query().Get("mailbox"); got != "" {
+			t.Errorf("mailbox filter = %q, want unfiltered", got)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status": "success",
@@ -673,5 +669,40 @@ func TestRedactRequestErrorDropsCredentials(t *testing.T) {
 	plain := errors.New("boom")
 	if redactRequestError(plain) != plain {
 		t.Error("non-url errors should pass through unchanged")
+	}
+}
+
+func TestListsAreCachedPerRunAndDroppedOnWrite(t *testing.T) {
+	var calls int
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("method") == "getVoicemails" {
+			calls++
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":     "success",
+			"voicemails": []map[string]any{{"mailbox": "101", "name": "Main"}},
+		})
+	})
+	ctx := context.Background()
+
+	for i := 0; i < 4; i++ {
+		if _, err := c.GetVoicemail(ctx, "101"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("calls = %d after 4 reads, want 1", calls)
+	}
+
+	// A write makes the cache stale; reading the pre-write value back is what
+	// Terraform reports as "provider produced inconsistent result".
+	if err := c.UpdateVoicemail(ctx, map[string]string{"mailbox": "101"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.GetVoicemail(ctx, "101"); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d after a write, want 2 (cache dropped)", calls)
 	}
 }

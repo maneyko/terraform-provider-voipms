@@ -11,11 +11,27 @@ type listCache struct {
 	voicemails   []Voicemail
 	subaccounts  []SubAccount
 	ringGroups   []RingGroup
+	dids         []DID
 	haveServers  bool
 	haveFwds     bool
 	haveVMs      bool
 	haveAccounts bool
 	haveGroups   bool
+	haveDIDs     bool
+}
+
+// invalidate drops every cached list. VoIP.ms is slow enough that reads are
+// served from one list per object type per run, so a write has to clear them or
+// the read-back after an update returns the pre-write values.
+func (c *Client) invalidate() {
+	c.cache.mu.Lock()
+	defer c.cache.mu.Unlock()
+	c.cache.servers, c.cache.haveServers = nil, false
+	c.cache.forwardings, c.cache.haveFwds = nil, false
+	c.cache.voicemails, c.cache.haveVMs = nil, false
+	c.cache.subaccounts, c.cache.haveAccounts = nil, false
+	c.cache.ringGroups, c.cache.haveGroups = nil, false
+	c.cache.dids, c.cache.haveDIDs = nil, false
 }
 
 func (c *Client) cachedServers(load func() ([]Server, error)) ([]Server, error) {
@@ -90,5 +106,20 @@ func (c *Client) cachedRingGroups(load func() ([]RingGroup, error)) ([]RingGroup
 	}
 	c.cache.ringGroups = items
 	c.cache.haveGroups = true
+	return items, nil
+}
+
+func (c *Client) cachedDIDs(load func() ([]DID, error)) ([]DID, error) {
+	c.cache.mu.Lock()
+	defer c.cache.mu.Unlock()
+	if c.cache.haveDIDs {
+		return c.cache.dids, nil
+	}
+	items, err := load()
+	if err != nil {
+		return nil, err
+	}
+	c.cache.dids = items
+	c.cache.haveDIDs = true
 	return items, nil
 }

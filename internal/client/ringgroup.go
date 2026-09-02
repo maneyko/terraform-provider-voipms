@@ -17,25 +17,20 @@ type setRingGroupResponse struct {
 
 // GetRingGroups lists ring groups. id, if set, filters to one group.
 func (c *Client) GetRingGroups(ctx context.Context, id string) ([]RingGroup, error) {
-	load := func() ([]RingGroup, error) {
-		params := map[string]string{}
-		if id != "" {
-			params["ring_group"] = id
-		}
+	items, err := c.cachedRingGroups(func() ([]RingGroup, error) {
 		var resp ringGroupsResponse
-		err := c.Call(ctx, "getRingGroups", params, &resp)
-		if err != nil {
+		if err := c.Call(ctx, "getRingGroups", map[string]string{}, &resp); err != nil {
 			if emptyResult(err) {
 				return []RingGroup{}, nil
 			}
 			return nil, err
 		}
 		return resp.RingGroups, nil
+	})
+	if err != nil || id == "" {
+		return items, err
 	}
-	if id == "" {
-		return c.cachedRingGroups(load)
-	}
-	return load()
+	return filterList(items, func(x *RingGroup) bool { return x.RingGroup.String() == id }), nil
 }
 
 // GetRingGroup returns one ring group by id.
@@ -82,5 +77,5 @@ func (c *Client) UpdateRingGroup(ctx context.Context, params map[string]string) 
 // DeleteRingGroup deletes a ring group by id. delRingGroup spells the
 // parameter `ringgroup`, without the underscore the other calls use.
 func (c *Client) DeleteRingGroup(ctx context.Context, id string) error {
-	return c.Call(ctx, "delRingGroup", map[string]string{"ringgroup": id}, nil)
+	return c.CallWrite(ctx, "delRingGroup", map[string]string{"ringgroup": id}, nil)
 }

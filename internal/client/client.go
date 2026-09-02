@@ -104,7 +104,10 @@ func (c *Client) Call(ctx context.Context, method string, params map[string]stri
 }
 
 // CallWrite is like Call but sends empty parameter values so fields can be cleared.
+// Cached lists are dropped either way: a write that times out client-side may
+// still have been applied, so the caches are suspect regardless of the outcome.
 func (c *Client) CallWrite(ctx context.Context, method string, params map[string]string, dest any) error {
+	defer c.invalidate()
 	return c.call(ctx, method, params, dest, false)
 }
 
@@ -209,4 +212,14 @@ func redactRequestError(err error) error {
 		safe = parsed.String()
 	}
 	return fmt.Errorf("%s %s: %w", uerr.Op, safe, uerr.Err)
+}
+
+func filterList[T any](items []T, keep func(*T) bool) []T {
+	out := make([]T, 0, 1)
+	for i := range items {
+		if keep(&items[i]) {
+			out = append(out, items[i])
+		}
+	}
+	return out
 }
