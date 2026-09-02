@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -647,5 +649,29 @@ func TestCanonicalRoute(t *testing.T) {
 	}
 	if _, err := CanonicalRoute("fwd:missing", tables); err == nil {
 		t.Error("expected error for unknown forwarding")
+	}
+}
+
+func TestRedactRequestErrorDropsCredentials(t *testing.T) {
+	raw := &url.Error{
+		Op:  "Get",
+		URL: "https://voip.ms/api/v1/rest.php?api_password=hunter2&api_username=me%40example.com&method=setVoicemail",
+		Err: context.DeadlineExceeded,
+	}
+	got := redactRequestError(raw).Error()
+	for _, secret := range []string{"hunter2", "api_password", "me%40example.com"} {
+		if strings.Contains(got, secret) {
+			t.Errorf("redacted error still contains %q: %s", secret, got)
+		}
+	}
+	if !strings.Contains(got, "https://voip.ms/api/v1/rest.php") {
+		t.Errorf("redacted error lost the endpoint: %s", got)
+	}
+	if !errors.Is(redactRequestError(raw), context.DeadlineExceeded) {
+		t.Error("redaction broke errors.Is on the wrapped cause")
+	}
+	plain := errors.New("boom")
+	if redactRequestError(plain) != plain {
+		t.Error("non-url errors should pass through unchanged")
 	}
 }
