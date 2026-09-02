@@ -87,39 +87,48 @@ func (s SubAccount) SetParams() map[string]string {
 
 // DID is a phone number from getDIDsInfo.
 type DID struct {
-	DID                   FlexString `json:"did"`
-	Description           FlexString `json:"description"`
-	VoicemailThreshold    FlexString `json:"voicemail_threshold"`
-	Routing               FlexString `json:"routing"`
-	FailoverBusy          FlexString `json:"failover_busy"`
-	FailoverUnreachable   FlexString `json:"failover_unreachable"`
-	FailoverNoanswer      FlexString `json:"failover_noanswer"`
-	Voicemail             FlexString `json:"voicemail"`
-	POP                   FlexString `json:"pop"`
-	Dialtime              FlexString `json:"dialtime"`
-	CNAM                  FlexString `json:"cnam"`
-	E911                  FlexString `json:"e911"`
-	CallerIDPrefix        FlexString `json:"callerid_prefix"`
-	RecordCalls           FlexString `json:"record_calls"`
-	Note                  FlexString `json:"note"`
-	BillingType           FlexString `json:"billing_type"`
-	NextBilling           FlexString `json:"next_billing"`
-	OrderDate             FlexString `json:"order_date"`
-	SMSAvailable          FlexString `json:"sms_available"`
-	SMSEnabled            FlexString `json:"sms_enabled"`
-	MMSAvailable          FlexString `json:"mms_available"`
-	SMSEmail              FlexString `json:"sms_email"`
-	SMSEmailEnabled       FlexString `json:"sms_email_enabled"`
-	SMSForward            FlexString `json:"sms_forward"`
-	SMSForwardEnabled     FlexString `json:"sms_forward_enabled"`
-	SMSURLCallback        FlexString `json:"sms_url_callback"`
-	SMSURLCallbackEnabled FlexString `json:"sms_url_callback_enabled"`
-	SMSURLCallbackRetry   FlexString `json:"sms_url_callback_retry"`
-	WebhookEnabled        FlexString `json:"webhook_enabled"`
-	Webhook               FlexString `json:"webhook"`
-	Dialmode              FlexString `json:"dialmode"`
-	SMSSIPAccount         FlexString `json:"sms_sipaccount"`
-	SMSSIPAccountEnabled  FlexString `json:"sms_sipaccount_enabled"`
+	DID                     FlexString `json:"did"`
+	Description             FlexString `json:"description"`
+	VoicemailThreshold      FlexString `json:"voicemail_threshold"`
+	Routing                 FlexString `json:"routing"`
+	FailoverBusy            FlexString `json:"failover_busy"`
+	FailoverUnreachable     FlexString `json:"failover_unreachable"`
+	FailoverNoanswer        FlexString `json:"failover_noanswer"`
+	Voicemail               FlexString `json:"voicemail"`
+	POP                     FlexString `json:"pop"`
+	Dialtime                FlexString `json:"dialtime"`
+	CNAM                    FlexString `json:"cnam"`
+	E911                    FlexString `json:"e911"`
+	CallerIDPrefix          FlexString `json:"callerid_prefix"`
+	RecordCalls             FlexString `json:"record_calls"`
+	Note                    FlexString `json:"note"`
+	BillingType             FlexString `json:"billing_type"`
+	NextBilling             FlexString `json:"next_billing"`
+	OrderDate               FlexString `json:"order_date"`
+	SMSAvailable            FlexString `json:"sms_available"`
+	SMSEnabled              FlexString `json:"sms_enabled"`
+	MMSAvailable            FlexString `json:"mms_available"`
+	SMSEmail                FlexString `json:"sms_email"`
+	SMSEmailEnabled         FlexString `json:"sms_email_enabled"`
+	SMSForward              FlexString `json:"sms_forward"`
+	SMSForwardEnabled       FlexString `json:"sms_forward_enabled"`
+	SMSURLCallback          FlexString `json:"sms_url_callback"`
+	SMSURLCallbackEnabled   FlexString `json:"sms_url_callback_enabled"`
+	SMSURLCallbackRetry     FlexString `json:"sms_url_callback_retry"`
+	WebhookEnabled          FlexString `json:"webhook_enabled"`
+	Webhook                 FlexString `json:"webhook"`
+	Dialmode                FlexString `json:"dialmode"`
+	SMSSIPAccount           FlexString `json:"sms_sipaccount"`
+	SMSSIPAccountEnabled    FlexString `json:"sms_sipaccount_enabled"`
+	InboundDialingMode      FlexString `json:"inbound_dialing_mode"`
+	PortOutPIN              FlexString `json:"port_out_pin"`
+	Transcribe              FlexString `json:"transcribe"`
+	TranscriptionEmail      FlexString `json:"transcription_email"`
+	TranscriptionLocale     FlexString `json:"transcription_locale"`
+	TranscriptionRedaction  FlexString `json:"transcription_redaction"`
+	TranscriptionSentiment  FlexString `json:"transcription_sentiment"`
+	TranscriptionSummary    FlexString `json:"transcription_summary"`
+	TranscriptionStartDelay FlexString `json:"transcription_start_delay"`
 }
 
 func (d DID) SetInfoParams() map[string]string {
@@ -138,6 +147,16 @@ func (d DID) SetInfoParams() map[string]string {
 		"billing_type":         d.BillingType.String(),
 		"record_calls":         d.RecordCalls.String(),
 		"voicemail_threshold":  d.VoicemailThreshold.String(),
+
+		"inbound_dialing_mode":      d.InboundDialingMode.String(),
+		"port_out_pin":              d.PortOutPIN.String(),
+		"transcribe":                zeroOne(d.Transcribe),
+		"transcription_email":       d.TranscriptionEmail.String(),
+		"transcription_locale":      d.TranscriptionLocale.String(),
+		"transcription_redaction":   yesNo(d.TranscriptionRedaction),
+		"transcription_sentiment":   yesNo(d.TranscriptionSentiment),
+		"transcription_summary":     yesNo(d.TranscriptionSummary),
+		"transcription_start_delay": d.TranscriptionStartDelay.String(),
 	}
 }
 
@@ -236,6 +255,14 @@ func (v Voicemail) SetParams() map[string]string {
 		params["client"] = id
 	}
 	return params
+}
+
+// zeroOne renders a VoIP.ms boolean as 1/0.
+func zeroOne(v FlexString) string {
+	if v.Bool() {
+		return "1"
+	}
+	return "0"
 }
 
 // yesNo renders a VoIP.ms boolean for a set* call. getVoicemails answers with
