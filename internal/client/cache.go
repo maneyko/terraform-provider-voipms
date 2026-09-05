@@ -11,12 +11,14 @@ type listCache struct {
 	voicemails   []Voicemail
 	subaccounts  []SubAccount
 	ringGroups   []RingGroup
+	timeConds    []TimeCondition
 	dids         []DID
 	haveServers  bool
 	haveFwds     bool
 	haveVMs      bool
 	haveAccounts bool
 	haveGroups   bool
+	haveTimeCond bool
 	haveDIDs     bool
 }
 
@@ -31,6 +33,7 @@ func (c *Client) invalidate() {
 	c.cache.voicemails, c.cache.haveVMs = nil, false
 	c.cache.subaccounts, c.cache.haveAccounts = nil, false
 	c.cache.ringGroups, c.cache.haveGroups = nil, false
+	c.cache.timeConds, c.cache.haveTimeCond = nil, false
 	c.cache.dids, c.cache.haveDIDs = nil, false
 }
 
@@ -106,6 +109,21 @@ func (c *Client) cachedRingGroups(load func() ([]RingGroup, error)) ([]RingGroup
 	}
 	c.cache.ringGroups = items
 	c.cache.haveGroups = true
+	return items, nil
+}
+
+func (c *Client) cachedTimeConditions(load func() ([]TimeCondition, error)) ([]TimeCondition, error) {
+	c.cache.mu.Lock()
+	defer c.cache.mu.Unlock()
+	if c.cache.haveTimeCond {
+		return c.cache.timeConds, nil
+	}
+	items, err := load()
+	if err != nil {
+		return nil, err
+	}
+	c.cache.timeConds = items
+	c.cache.haveTimeCond = true
 	return items, nil
 }
 

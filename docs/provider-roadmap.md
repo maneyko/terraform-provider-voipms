@@ -2,7 +2,7 @@
 
 Coverage of the VoIP.ms REST/JSON API in this Terraform provider.
 
-**Status:** resources, single data sources, and list data sources for the table below are implemented. IVRs, ring groups, queues, time conditions, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
+**Status:** resources, single data sources, and list data sources for the table below are implemented. IVRs, queues, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
 
 ## Implemented
 
@@ -11,6 +11,8 @@ Coverage of the VoIP.ms REST/JSON API in this Terraform provider.
 | Sub-accounts | `getSubAccounts` / `createSubAccount` / `setSubAccount` / `delSubAccount` | `voipms_subaccount` / `voipms_subaccounts` |
 | DIDs | `getDIDsInfo` / `setDIDInfo` | `voipms_did` / `voipms_dids` (configure only; does not order or cancel numbers) |
 | DID SMS / webhooks | fields on `getDIDsInfo` / `setSMS` | nested on `voipms_did` |
+| Ring groups | `getRingGroups` / `setRingGroup` / `delRingGroup` | `voipms_ring_group` / `voipms_ring_groups` |
+| Time conditions | `getTimeConditions` / `setTimeCondition` / `delTimeCondition` | `voipms_time_condition` / `voipms_time_conditions` |
 | Call forwarding | `getForwardings` / `createForwarding` / `setForwarding` / `delForwarding` | `voipms_forwarding` / `voipms_forwardings` |
 | Voicemail boxes | `getVoicemails` / `createVoicemail` / `setVoicemail` / `delVoicemail` | `voipms_voicemail` / `voipms_voicemails` |
 | Callbacks | `getCallbacks` / `createCallback` / `setCallback` / `delCallback` | `voipms_callback` / `voipms_callbacks` |
@@ -22,7 +24,7 @@ Coverage of the VoIP.ms REST/JSON API in this Terraform provider.
 
 ## Not implemented
 
-IVRs, ring groups, queues, time conditions, DISA, SIP URIs, recordings, call hunting, conferences, reseller clients, and DID order/cancel.
+IVRs, queues, DISA, SIP URIs, recordings, call hunting, conferences, reseller clients, and DID order/cancel.
 
 ## Reference catalog methods (used for schema / lookup)
 

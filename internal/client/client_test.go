@@ -614,8 +614,9 @@ func TestRouteFormat(t *testing.T) {
 func TestCanonicalRoute(t *testing.T) {
 	t.Parallel()
 	tables := RouteTables{
-		Forwardings: []Forwarding{{Forwarding: "186772", Description: "Kate Fizz Cell"}},
-		Voicemails:  []Voicemail{{Mailbox: "500601", Name: "Main"}},
+		Forwardings:    []Forwarding{{Forwarding: "186772", Description: "Kate Fizz Cell"}},
+		Voicemails:     []Voicemail{{Mailbox: "500601", Name: "Main"}},
+		TimeConditions: []TimeCondition{{TimeCondition: "1830", Name: "Office Hours"}},
 	}
 	cases := []struct {
 		in, want string
@@ -626,6 +627,9 @@ func TestCanonicalRoute(t *testing.T) {
 		{"vm:500601", "vm:500601"},
 		{"vm:Main", "vm:500601"},
 		{"vm:main", "vm:500601"},
+		{"tc:1830", "tc:1830"},
+		{"tc:Office Hours", "tc:1830"},
+		{"tc:office-hours", "tc:1830"},
 		{"account:150060_common-fs", "account:150060_common-fs"},
 		{"sys:hangup", "sys:hangup"},
 		{"none:", "none:"},
@@ -645,6 +649,9 @@ func TestCanonicalRoute(t *testing.T) {
 	}
 	if _, err := CanonicalRoute("fwd:missing", tables); err == nil {
 		t.Error("expected error for unknown forwarding")
+	}
+	if _, err := CanonicalRoute("tc:missing", tables); err == nil {
+		t.Error("expected error for unknown time condition")
 	}
 }
 

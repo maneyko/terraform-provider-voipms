@@ -25,11 +25,11 @@ func TestProviderRegistersInventory(t *testing.T) {
 	t.Parallel()
 
 	p := New("test")()
-	if got := len(p.Resources(context.Background())); got != 9 {
-		t.Errorf("Resources() count = %d, want 9", got)
+	if got := len(p.Resources(context.Background())); got != 10 {
+		t.Errorf("Resources() count = %d, want 10", got)
 	}
-	if got := len(p.DataSources(context.Background())); got != 21 {
-		t.Errorf("DataSources() count = %d, want 21", got)
+	if got := len(p.DataSources(context.Background())); got != 23 {
+		t.Errorf("DataSources() count = %d, want 23", got)
 	}
 }
 

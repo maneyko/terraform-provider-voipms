@@ -297,6 +297,38 @@ func (g RingGroup) SetParams() map[string]string {
 	}
 }
 
+// TimeCondition is a time-of-day routing rule from getTimeConditions. The six
+// window fields are parallel semicolon-separated lists — `starthour` "8;9" with
+// `weekdaystart` "mon;sat" is two windows, and VoIP.ms rejects a write whose
+// lists are not all the same length.
+type TimeCondition struct {
+	TimeCondition  FlexString `json:"timecondition"`
+	Name           FlexString `json:"name"`
+	RoutingMatch   FlexString `json:"routing_match"`
+	RoutingNomatch FlexString `json:"routing_nomatch"`
+	StartHour      FlexString `json:"starthour"`
+	StartMinute    FlexString `json:"startminute"`
+	EndHour        FlexString `json:"endhour"`
+	EndMinute      FlexString `json:"endminute"`
+	WeekdayStart   FlexString `json:"weekdaystart"`
+	WeekdayEnd     FlexString `json:"weekdayend"`
+}
+
+func (t TimeCondition) SetParams() map[string]string {
+	return map[string]string{
+		"timecondition":   t.TimeCondition.String(),
+		"name":            t.Name.String(),
+		"routing_match":   t.RoutingMatch.String(),
+		"routing_nomatch": t.RoutingNomatch.String(),
+		"starthour":       t.StartHour.String(),
+		"startminute":     t.StartMinute.String(),
+		"endhour":         t.EndHour.String(),
+		"endminute":       t.EndMinute.String(),
+		"weekdaystart":    t.WeekdayStart.String(),
+		"weekdayend":      t.WeekdayEnd.String(),
+	}
+}
+
 // Callback is a callback from getCallbacks.
 type Callback struct {
 	Callback        FlexString `json:"callback"`
