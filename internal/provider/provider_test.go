@@ -28,8 +28,8 @@ func TestProviderRegistersInventory(t *testing.T) {
 	if got := len(p.Resources(context.Background())); got != 10 {
 		t.Errorf("Resources() count = %d, want 10", got)
 	}
-	if got := len(p.DataSources(context.Background())); got != 23 {
-		t.Errorf("DataSources() count = %d, want 23", got)
+	if got := len(p.DataSources(context.Background())); got != 25 {
+		t.Errorf("DataSources() count = %d, want 25", got)
 	}
 }
 

@@ -461,6 +461,17 @@ func TestMatchNamedObjects(t *testing.T) {
 	if err != nil || grp.PhonebookGroup.String() != "5001" {
 		t.Fatalf("MatchPhonebookGroup: %v %+v", err, grp)
 	}
+
+	recs := []Recording{{Recording: "7567", Description: "Main Greeting"}}
+	for _, query := range []string{"7567", "Main Greeting", "main-greeting"} {
+		rec, err := MatchRecording(recs, query)
+		if err != nil || rec.Recording.String() != "7567" {
+			t.Errorf("MatchRecording(%q): %v %+v", query, err, rec)
+		}
+	}
+	if _, err := MatchRecording(recs, "missing"); err == nil {
+		t.Error("MatchRecording should reject an unknown description")
+	}
 }
 
 func TestFindServerByHostname(t *testing.T) {
@@ -507,6 +518,42 @@ func TestGetCallerIDFilters(t *testing.T) {
 	}
 	if got.CallerID.String() != "999XXXXXXXX" {
 		t.Errorf("callerid = %q", got.CallerID)
+	}
+}
+
+// getRecordings answers catalog style, with the id under "value".
+func TestGetRecordings(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if got := r.URL.Query().Get("recording"); got != "" {
+			t.Errorf("GetRecordings should list all recordings, got recording=%q", got)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "success",
+			"recordings": []map[string]any{
+				{"value": "7567", "description": "Main Greeting"},
+				{"value": "7568", "description": "After Hours"},
+			},
+		})
+	})
+	got, err := c.GetRecording(context.Background(), "7568")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Description.String() != "After Hours" {
+		t.Errorf("description = %q", got.Description)
+	}
+	if _, err := c.FindRecording(context.Background(), "Main Greeting"); err != nil {
+		t.Errorf("FindRecording by description: %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("made %d requests, want 1 from the cached list", calls)
+	}
+	if _, err := c.GetRecording(context.Background(), "999"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing recording error = %v, want ErrNotFound", err)
 	}
 }
 

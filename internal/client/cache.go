@@ -12,6 +12,7 @@ type listCache struct {
 	subaccounts  []SubAccount
 	ringGroups   []RingGroup
 	timeConds    []TimeCondition
+	recordings   []Recording
 	dids         []DID
 	haveServers  bool
 	haveFwds     bool
@@ -19,6 +20,7 @@ type listCache struct {
 	haveAccounts bool
 	haveGroups   bool
 	haveTimeCond bool
+	haveRecs     bool
 	haveDIDs     bool
 }
 
@@ -34,6 +36,7 @@ func (c *Client) invalidate() {
 	c.cache.subaccounts, c.cache.haveAccounts = nil, false
 	c.cache.ringGroups, c.cache.haveGroups = nil, false
 	c.cache.timeConds, c.cache.haveTimeCond = nil, false
+	c.cache.recordings, c.cache.haveRecs = nil, false
 	c.cache.dids, c.cache.haveDIDs = nil, false
 }
 
@@ -124,6 +127,21 @@ func (c *Client) cachedTimeConditions(load func() ([]TimeCondition, error)) ([]T
 	}
 	c.cache.timeConds = items
 	c.cache.haveTimeCond = true
+	return items, nil
+}
+
+func (c *Client) cachedRecordings(load func() ([]Recording, error)) ([]Recording, error) {
+	c.cache.mu.Lock()
+	defer c.cache.mu.Unlock()
+	if c.cache.haveRecs {
+		return c.cache.recordings, nil
+	}
+	items, err := load()
+	if err != nil {
+		return nil, err
+	}
+	c.cache.recordings = items
+	c.cache.haveRecs = true
 	return items, nil
 }
 

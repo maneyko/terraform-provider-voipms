@@ -416,6 +416,13 @@ func (g PhonebookGroup) SetParams() map[string]string {
 	}
 }
 
+// Recording is an audio prompt from getRecordings. VoIP.ms answers catalog
+// style — value/description, not id/name — the way getMusicOnHold does.
+type Recording struct {
+	Recording   FlexString `json:"value"`
+	Description FlexString `json:"description"`
+}
+
 // Server is a VoIP.ms POP from getServersInfo.
 type Server struct {
 	Name        FlexString `json:"server_name"`

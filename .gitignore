@@ -29,3 +29,6 @@ terraformrc.local
 
 # Live API dumps contain sub-account SIP passwords
 inventory/
+
+# Internal notes and directions
+CLAUDE.md

@@ -2,7 +2,7 @@
 
 Coverage of the VoIP.ms REST/JSON API in this Terraform provider.
 
-**Status:** resources, single data sources, and list data sources for the table below are implemented. IVRs, queues, DISA, SIP URIs, recordings, call hunting, conferences, and reseller clients are not implemented.
+**Status:** resources, single data sources, and list data sources for the table below are implemented. IVRs, queues, DISA, SIP URIs, call hunting, conferences, and reseller clients are not implemented.
 
 ## Implemented
 
@@ -20,11 +20,17 @@ Coverage of the VoIP.ms REST/JSON API in this Terraform provider.
 | Phonebook | `getPhonebook` / `createPhonebook` / `setPhonebook` / `delPhonebook` | `voipms_phonebook_entry` / `voipms_phonebook_entries` |
 | Phonebook groups | `getPhonebookGroups` / `createPhonebookGroup` / `setPhonebookGroup` / `delPhonebookGroup` | `voipms_phonebook_group` / `voipms_phonebook_groups` |
 | Account balance | `getBalance` | `voipms_balance` |
+| Recordings | `getRecordings` | `voipms_recording` / `voipms_recordings` (read only; upload in the portal) |
 | POP / servers | `getServersInfo` | `voipms_server` / `voipms_servers` |
 
 ## Not implemented
 
-IVRs, queues, DISA, SIP URIs, recordings, call hunting, conferences, reseller clients, and DID order/cancel.
+IVRs, queues, DISA, SIP URIs, call hunting, conferences, reseller clients, and DID order/cancel.
+
+`setRecording` and `delRecording` are deliberately left out. A recording is uploaded as a base64
+`file` parameter and there is no read-back of the audio, so a resource could create and replace one
+but never detect drift in it — a write-only resource that lies on every plan. Upload in the portal
+and read the id with `voipms_recording`.
 
 ## Reference catalog methods (used for schema / lookup)
 

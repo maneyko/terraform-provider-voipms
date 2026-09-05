@@ -155,6 +155,8 @@ func (p *voipmsProvider) DataSources(_ context.Context) []func() datasource.Data
 		NewRingGroupsDataSource,
 		NewTimeConditionDataSource,
 		NewTimeConditionsDataSource,
+		NewRecordingDataSource,
+		NewRecordingsDataSource,
 		NewServerDataSource,
 		NewServersDataSource,
 	}

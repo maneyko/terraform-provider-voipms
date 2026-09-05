@@ -77,6 +77,14 @@ func MatchTimeCondition(items []TimeCondition, query string) (*TimeCondition, er
 	})
 }
 
+// MatchRecording finds a recording by id, description, or description slug
+// (`main-greeting`).
+func MatchRecording(items []Recording, query string) (*Recording, error) {
+	return matchUnique(items, query, "recording", func(r *Recording) []string {
+		return keysWithSlug(r.Recording.String(), r.Description.String())
+	})
+}
+
 // MatchCallback finds a callback by id or description.
 func MatchCallback(items []Callback, query string) (*Callback, error) {
 	return matchUnique(items, query, "callback", func(c *Callback) []string {
